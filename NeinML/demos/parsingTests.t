@@ -1,12 +1,12 @@
   $ ./demoParse.exe <<-EOF
   > let test = 1
   > EOF
-  [(Define ("test", (Value (VInt 1))))]
+  [(Define ("test", (Value ((VInt 1), )), ))]
 
   $ ./demoParse.exe <<-EOF
   > let test = true
   > EOF
-  [(Define ("test", (Value (VBool true))))]
+  [(Define ("test", (Value ((VBool true), )), ))]
 
   $ ./demoParse.exe <<-EOF
   > let then = true
@@ -17,9 +17,10 @@
   > let test = 1 + 2 * 3 - 10
   > EOF
   [(Define ("test",
-      (Add ((Value (VInt 1)),
-         (Sub ((Mul ((Value (VInt 2)), (Value (VInt 3)))), (Value (VInt 10))))
-         ))
+      (Add ((Value ((VInt 1), )),
+         (Sub ((Mul ((Value ((VInt 2), )), (Value ((VInt 3), )), )),
+            (Value ((VInt 10), )), )),
+         )),
       ))
     ]
 
@@ -27,24 +28,24 @@
   > let test = 1 + 2 * 3 / 10 - 10 % 5
   > EOF
   [(Define ("test",
-      (Add ((Value (VInt 1)),
+      (Add ((Value ((VInt 1), )),
          (Sub (
-            (Mul ((Value (VInt 2)), (Div ((Value (VInt 3)), (Value (VInt 10))))
-               )),
-            (Mod ((Value (VInt 10)), (Value (VInt 5))))))
-         ))
+            (Mul ((Value ((VInt 2), )),
+               (Div ((Value ((VInt 3), )), (Value ((VInt 10), )), )), )),
+            (Mod ((Value ((VInt 10), )), (Value ((VInt 5), )), )), )),
+         )),
       ))
     ]
 
   $ ./demoParse.exe <<-EOF
   > let test var = 10
   > EOF
-  [(Define ("test", (Func ("var", (Value (VInt 10))))))]
+  [(Define ("test", (Func ("var", (Value ((VInt 10), )), )), ))]
 
   $ ./demoParse.exe <<-EOF
   > let id var = var
   > EOF
-  [(Define ("id", (Func ("var", (Variable "var")))))]
+  [(Define ("id", (Func ("var", (Variable ("var", )), )), ))]
 
   $ ./demoParse.exe <<-EOF
   > let id var = var < 10 && var < 5 || var <> 4
@@ -52,10 +53,10 @@
   [(Define ("id",
       (Func ("var",
          (Or (
-            (And ((Less ((Variable "var"), (Value (VInt 10)))),
-               (Less ((Variable "var"), (Value (VInt 5)))))),
-            (NotEqual ((Variable "var"), (Value (VInt 4))))))
-         ))
+            (And ((Less ((Variable ("var", )), (Value ((VInt 10), )), )),
+               (Less ((Variable ("var", )), (Value ((VInt 5), )), )), )),
+            (NotEqual ((Variable ("var", )), (Value ((VInt 4), )), )), )),
+         )),
       ))
     ]
 
@@ -65,10 +66,10 @@
   [(Define ("id",
       (Func ("var",
          (Or (
-            (And ((Less ((Variable "var"), (Value (VInt 10)))),
-               (Less ((Variable "var"), (Value (VInt 5)))))),
-            (NotEqual ((Variable "var"), (Value (VInt 4))))))
-         ))
+            (And ((Less ((Variable ("var", )), (Value ((VInt 10), )), )),
+               (Less ((Variable ("var", )), (Value ((VInt 5), )), )), )),
+            (NotEqual ((Variable ("var", )), (Value ((VInt 4), )), )), )),
+         )),
       ))
     ]
 
@@ -78,10 +79,10 @@
   [(Define ("id",
       (Func ("var",
          (Or (
-            (And ((Less ((Variable "var"), (Value (VInt 10)))),
-               (Less ((Variable "var"), (Value (VInt 5)))))),
-            (NotEqual ((Variable "var"), (Value (VInt 4))))))
-         ))
+            (And ((Less ((Variable ("var", )), (Value ((VInt 10), )), )),
+               (Less ((Variable ("var", )), (Value ((VInt 5), )), )), )),
+            (NotEqual ((Variable ("var", )), (Value ((VInt 4), )), )), )),
+         )),
       ))
     ]
 
@@ -91,10 +92,10 @@
   [(Define ("var",
       (Func ("x",
          (IfThenElse (
-            (Or ((More ((Variable "x"), (Value (VInt 15)))),
-               (Less ((Variable "x"), (Value (VInt 10)))))),
-            (Variable "x"), (Value (VInt 9))))
-         ))
+            (Or ((More ((Variable ("x", )), (Value ((VInt 15), )), )),
+               (Less ((Variable ("x", )), (Value ((VInt 10), )), )), )),
+            (Variable ("x", )), (Value ((VInt 9), )), )),
+         )),
       ))
     ]
 
@@ -105,9 +106,11 @@
       (Func ("x",
          (Func ("y",
             (Func ("z",
-               (Add ((Variable "x"), (Mul ((Variable "y"), (Variable "z")))))))
-            ))
-         ))
+               (Add ((Variable ("x", )),
+                  (Mul ((Variable ("y", )), (Variable ("z", )), )), )),
+               )),
+            )),
+         )),
       ))
     ]
 
@@ -117,10 +120,10 @@
   [(Define ("var_func",
       (Func ("y",
          (Func ("z",
-            (IfThenElse ((More ((Variable "y"), (Variable "z"))),
-               (Value (VBool true)), (Value (VBool false))))
-            ))
-         ))
+            (IfThenElse ((More ((Variable ("y", )), (Variable ("z", )), )),
+               (Value ((VBool true), )), (Value ((VBool false), )), )),
+            )),
+         )),
       ))
     ]
 
@@ -130,11 +133,12 @@
   > EOF
   [(RecDefine ("func",
       (Func ("x",
-         (IfThenElse ((More ((Variable "x"), (Value (VInt 15)))),
-            (Variable "x"),
-            (Apply ((Variable "func"), (Add ((Variable "x"), (Variable "x")))))
-            ))
-         ))
+         (IfThenElse ((More ((Variable ("x", )), (Value ((VInt 15), )), )),
+            (Variable ("x", )),
+            (Apply ((Variable ("func", )),
+               (Add ((Variable ("x", )), (Variable ("x", )), )), )),
+            )),
+         )),
       ))
     ]
 
@@ -150,22 +154,24 @@
   > EOF
   [(Define ("func",
       (Func ("x",
-         (LetIn ("test1", (Value (VInt 15)),
+         (LetIn ("test1", (Value ((VInt 15), )),
             (RecLetIn ("test2",
                (Func ("y",
-                  (IfThenElse ((More ((Variable "y"), (Value (VInt 10)))),
-                     (Add ((Value (VInt 30)), (Variable "test1"))),
-                     (Add ((Variable "test1"),
-                        (Apply ((Variable "test2"),
-                           (Add ((Variable "y"), (Value (VInt 1))))))
-                        ))
-                     ))
+                  (IfThenElse (
+                     (More ((Variable ("y", )), (Value ((VInt 10), )), )),
+                     (Add ((Value ((VInt 30), )), (Variable ("test1", )), )),
+                     (Add ((Variable ("test1", )),
+                        (Apply ((Variable ("test2", )),
+                           (Add ((Variable ("y", )), (Value ((VInt 1), )), )), 
+                           )),
+                        )),
+                     )),
                   )),
-               (Add ((Variable "test1"),
-                  (Apply ((Variable "test2"), (Variable "x")))))
-               ))
-            ))
-         ))
+               (Add ((Variable ("test1", )),
+                  (Apply ((Variable ("test2", )), (Variable ("x", )), )), )),
+               )),
+            )),
+         )),
       ))
     ]
 
@@ -174,14 +180,14 @@
   > EOF
   [(RecDefine ("fac",
       (Func ("n",
-         (IfThenElse ((Equal ((Variable "n"), (Value (VInt 1)))),
-            (Value (VInt 1)),
-            (Mul ((Variable "n"),
-               (Apply ((Variable "fac"),
-                  (Sub ((Variable "n"), (Value (VInt 1))))))
-               ))
-            ))
-         ))
+         (IfThenElse ((Equal ((Variable ("n", )), (Value ((VInt 1), )), )),
+            (Value ((VInt 1), )),
+            (Mul ((Variable ("n", )),
+               (Apply ((Variable ("fac", )),
+                  (Sub ((Variable ("n", )), (Value ((VInt 1), )), )), )),
+               )),
+            )),
+         )),
       ))
     ]
 
@@ -198,19 +204,22 @@
          (RecLetIn ("helper",
             (Func ("num",
                (Func ("acc",
-                  (IfThenElse ((Equal ((Variable "num"), (Value (VInt 1)))),
-                     (Variable "acc"),
+                  (IfThenElse (
+                     (Equal ((Variable ("num", )), (Value ((VInt 1), )), )),
+                     (Variable ("acc", )),
                      (Apply (
-                        (Apply ((Variable "helper"),
-                           (Sub ((Variable "num"), (Value (VInt 1)))))),
-                        (Mul ((Variable "acc"), (Variable "num")))))
-                     ))
-                  ))
+                        (Apply ((Variable ("helper", )),
+                           (Sub ((Variable ("num", )), (Value ((VInt 1), )), )),
+                           )),
+                        (Mul ((Variable ("acc", )), (Variable ("num", )), )), 
+                        )),
+                     )),
+                  )),
                )),
-            (Apply ((Apply ((Variable "helper"), (Variable "n"))),
-               (Value (VInt 1))))
-            ))
-         ))
+            (Apply ((Apply ((Variable ("helper", )), (Variable ("n", )), )),
+               (Value ((VInt 1), )), )),
+            )),
+         )),
       ))
     ]
 
@@ -220,11 +229,11 @@
   > let val = 15
   > EOF
   [(Define ("simple_func",
-      (Func ("x", (Add ((Variable "x"), (Value (VInt 1))))))));
+      (Func ("x", (Add ((Variable ("x", )), (Value ((VInt 1), )), )), )), ));
     (Define ("if_func",
        (Func ("x",
-          (IfThenElse ((More ((Variable "x"), (Value (VInt 0)))),
-             (Value (VBool true)), (Value (VBool false))))
-          ))
+          (IfThenElse ((More ((Variable ("x", )), (Value ((VInt 0), )), )),
+             (Value ((VBool true), )), (Value ((VBool false), )), )),
+          )),
        ));
-    (Define ("val", (Value (VInt 15))))]
+    (Define ("val", (Value ((VInt 15), )), ))]

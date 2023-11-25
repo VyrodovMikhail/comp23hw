@@ -1,4 +1,4 @@
-(** Copyright 2023-2024, Mikhail Vyrodov *)
+(** Copyright 2023-2024, Mikhail Vyrodov and Vyacheslav Buchin *)
 
 (** SPDX-License-Identifier: LGPL-3.0-or-later *)
 
@@ -11,33 +11,34 @@ type const =
 
 type varname_part = VarPart of name [@@deriving show { with_path = false }]
 
-type expression =
-  | Add of expression * expression
-  | Sub of expression * expression
+type 'a expression =
+  | Add of 'a expression * 'a expression * 'a
+  | Sub of 'a expression * 'a expression * 'a
   (* | UnaryMin of expression
-  | UnaryPlus of expression *)
-  | Mul of expression * expression
-  | Div of expression * expression
-  | Mod of expression * expression
-  | And of expression * expression
-  | Or of expression * expression
-  | Equal of expression * expression
-  | NotEqual of expression * expression
-  | Less of expression * expression
-  | LessOrEq of expression * expression
-  | More of expression * expression
-  | MoreOrEq of expression * expression
-  | LetIn of name * expression * expression
-  | RecLetIn of name * expression * expression
-  | IfThenElse of expression * expression * expression
-  | Func of name * expression
-  | Apply of expression * expression
-  | Variable of name
-  | Value of const
+     | UnaryPlus of expression *)
+  | Mul of 'a expression * 'a expression * 'a
+  | Div of 'a expression * 'a expression * 'a
+  | Mod of 'a expression * 'a expression * 'a
+  | And of 'a expression * 'a expression * 'a
+  | Or of 'a expression * 'a expression * 'a
+  | Equal of 'a expression * 'a expression * 'a
+  | NotEqual of 'a expression * 'a expression * 'a
+  | Less of 'a expression * 'a expression * 'a
+  | LessOrEq of 'a expression * 'a expression * 'a
+  | More of 'a expression * 'a expression * 'a
+  | MoreOrEq of 'a expression * 'a expression * 'a
+  | LetIn of name * 'a expression * 'a expression * 'a
+  | RecLetIn of name * 'a expression * 'a expression * 'a
+  | IfThenElse of 'a expression * 'a expression * 'a expression * 'a
+  | Func of name * 'a expression * 'a
+  | Apply of 'a expression * 'a expression * 'a
+  | Variable of name * 'a
+  | Value of const * 'a
 [@@deriving show { with_path = false }]
 
-type statement =
-  | Define of name * expression (** let var (arg1 arg2...) = <expression> *)
-  | RecDefine of name * expression (** let rec var (arg1 arg2...) = <expression> *)
+type 'a statement =
+  | Define of name * 'a expression * 'a (** let var (arg1 arg2...) = <expression> *)
+  | RecDefine of name * 'a expression * 'a
+  (** let rec var (arg1 arg2...) = <expression> *)
 
-and statements_list = statement list [@@deriving show { with_path = false }]
+and 'a statements_list = 'a statement list [@@deriving show { with_path = false }]

@@ -54,23 +54,23 @@ end = struct
   type 'a t = int -> int * ('a, error) Result.t
 
   let ( >>= ) : 'a 'b. 'a t -> ('a -> 'b t) -> 'b t =
-   fun m f st ->
+    fun m f st ->
     let last, r = m st in
     match r with
     | Result.Error x -> last, Error x
     | Ok a -> f a last
- ;;
+  ;;
 
   let fail e st = st, Result.fail e
   let return x last = last, Result.return x
   let bind x ~f = x >>= f
 
   let ( >>| ) : 'a 'b. 'a t -> ('a -> 'b) -> 'b t =
-   fun x f st ->
+    fun x f st ->
     match x st with
     | st, Ok x -> st, Ok (f x)
     | st, Result.Error e -> st, Result.Error e
- ;;
+  ;;
 
   module Syntax = struct
     let ( let* ) x f = bind x ~f
@@ -245,7 +245,7 @@ let unify = Subst.unify
 let fresh_var = fresh >>| fun n -> Ty_var n
 
 let instantiate : scheme -> ty R.t =
- fun (S (bs, t)) ->
+  fun (S (bs, t)) ->
   VarSet.fold_left_m
     (fun typ name ->
       let* f1 = fresh_var in
@@ -256,7 +256,7 @@ let instantiate : scheme -> ty R.t =
 ;;
 
 let generalize : TypeEnv.t -> Type.t -> Scheme.t =
- fun env ty ->
+  fun env ty ->
   let free = VarSet.diff (Type.free_vars ty) (TypeEnv.free_vars env) in
   S (free, ty)
 ;;
@@ -270,41 +270,41 @@ let lookup_env e xs =
 ;;
 
 let infer_stmt =
-  let rec (helper : TypeEnv.t -> Ast.expression -> (Subst.t * ty) R.t) =
-   fun env -> function
-    | Ast.Value (Ast.VInt _) -> return (Subst.empty, Prim TInt)
-    | Ast.Value (Ast.VBool _) -> return (Subst.empty, Prim TBool)
-    | Ast.Variable x -> lookup_env x env
-    | Ast.Add (left, right)
-    | Ast.Sub (left, right)
-    | Ast.Mul (left, right)
-    | Ast.Div (left, right)
-    | Ast.Mod (left, right) ->
+  let rec (helper : TypeEnv.t -> unit Ast.expression -> (Subst.t * ty) R.t) =
+    fun env -> function
+    | Ast.Value (Ast.VInt _, ()) -> return (Subst.empty, Prim TInt)
+    | Ast.Value (Ast.VBool _, ()) -> return (Subst.empty, Prim TBool)
+    | Ast.Variable (x, ()) -> lookup_env x env
+    | Ast.Add (left, right, ())
+    | Ast.Sub (left, right, ())
+    | Ast.Mul (left, right, ())
+    | Ast.Div (left, right, ())
+    | Ast.Mod (left, right, ()) ->
       let* subst_left, typ_left = helper env left in
       let* subst_right, typ_right = helper env right in
       let* subst' = unify typ_left int_typ in
       let* subst'' = unify typ_right int_typ in
       let* final_subst = Subst.compose_all [ subst'; subst''; subst_left; subst_right ] in
       return (final_subst, int_typ)
-    | Ast.More (left, right)
-    | Ast.MoreOrEq (left, right)
-    | Ast.Less (left, right)
-    | Ast.LessOrEq (left, right)
-    | Ast.Equal (left, right)
-    | Ast.NotEqual (left, right) ->
+    | Ast.More (left, right, ())
+    | Ast.MoreOrEq (left, right, ())
+    | Ast.Less (left, right, ())
+    | Ast.LessOrEq (left, right, ())
+    | Ast.Equal (left, right, ())
+    | Ast.NotEqual (left, right, ()) ->
       let* subst_left, typ_left = helper env left in
       let* subst_right, typ_right = helper env right in
       let* subst' = unify typ_left typ_right in
       let* final_subst = Subst.compose_all [ subst'; subst_left; subst_right ] in
       return (final_subst, bool_typ)
-    | Ast.And (left, right) | Ast.Or (left, right) ->
+    | Ast.And (left, right, ()) | Ast.Or (left, right, ()) ->
       let* subst_left, typ_left = helper env left in
       let* subst_right, typ_right = helper env right in
       let* subst' = unify typ_left bool_typ in
       let* subst'' = unify typ_right bool_typ in
       let* final_subst = Subst.compose_all [ subst'; subst''; subst_left; subst_right ] in
       return (final_subst, bool_typ)
-    | Ast.Apply (left, right) ->
+    | Ast.Apply (left, right, ()) ->
       let* s1, t1 = helper env left in
       let* s2, t2 = helper (TypeEnv.apply s1 env) right in
       let* tv = fresh_var in
@@ -312,7 +312,7 @@ let infer_stmt =
       let trez = Subst.apply s3 tv in
       let* final_subst = Subst.compose_all [ s3; s2; s1 ] in
       return (final_subst, trez)
-    | Ast.IfThenElse (condition, true_expr, else_expr) ->
+    | Ast.IfThenElse (condition, true_expr, else_expr, ()) ->
       let* subst_cond, typ_cond = helper env condition in
       let* subst_true_expr, typ_true_expr = helper env true_expr in
       let* subst_false_expr, typ_false_expr = helper env else_expr in
@@ -322,14 +322,14 @@ let infer_stmt =
         Subst.compose_all [ subst_cond; subst_true_expr; subst_false_expr; s1; s2 ]
       in
       return (final_subst, Subst.apply final_subst typ_true_expr)
-    | Ast.LetIn (name, inner_def, outer_expr) ->
+    | Ast.LetIn (name, inner_def, outer_expr, ()) ->
       let* subst_inner_def, typ_inner_def = helper env inner_def in
       let env1 = TypeEnv.apply subst_inner_def env in
       let t1 = generalize env1 typ_inner_def in
       let* s1, t2 = helper (TypeEnv.extend env1 (name, t1)) outer_expr in
       let* final_subst = Subst.compose subst_inner_def s1 in
       return (final_subst, t2)
-    | Ast.RecLetIn (name, inner_def, outer_expr) ->
+    | Ast.RecLetIn (name, inner_def, outer_expr, ()) ->
       let* tv = fresh_var in
       let env = TypeEnv.extend env (name, S (VarSet.empty, tv)) in
       let* subst_inner, typ_inner = helper env inner_def in
@@ -340,16 +340,16 @@ let infer_stmt =
       let* s3, t3 = helper TypeEnv.(extend (apply s2 env) (name, t2)) outer_expr in
       let* final_subst = Subst.compose s2 s3 in
       return (final_subst, t3)
-    | Ast.Func (param_name, def) ->
+    | Ast.Func (param_name, def, ()) ->
       let* tv = fresh_var in
       let env = TypeEnv.extend env (param_name, S (VarSet.empty, tv)) in
       let* s1, t1 = helper env def in
       let trez = Arrow (Subst.apply s1 tv, t1) in
       return (s1, trez)
-  and statement_helper : TypeEnv.t -> Ast.statement -> (Subst.t * ty) R.t =
-   fun env -> function
-    | Ast.Define (_, function_body) -> helper env function_body
-    | Ast.RecDefine (name, function_body) ->
+  and statement_helper : TypeEnv.t -> unit Ast.statement -> (Subst.t * ty) R.t =
+    fun env -> function
+    | Ast.Define (_, function_body, ()) -> helper env function_body
+    | Ast.RecDefine (name, function_body, ()) ->
       let* tv = fresh_var in
       let env = TypeEnv.extend env (name, S (VarSet.empty, tv)) in
       let* s1, t = helper env function_body in
@@ -360,9 +360,9 @@ let infer_stmt =
   statement_helper
 ;;
 
-let infer_statements (stms : Ast.statements_list) : ty list t =
+let infer_statements (stms : unit Ast.statements_list) : ty list t =
   let infer_list_elem env_stmt_pair = function
-    | (Ast.Define (name, _) | Ast.RecDefine (name, _)) as new_stmt ->
+    | (Ast.Define (name, _, ()) | Ast.RecDefine (name, _, ())) as new_stmt ->
       let* env, stms_types = env_stmt_pair in
       let* _, ty = infer_stmt env new_stmt in
       return (TypeEnv.extend env (name, S (VarSet.empty, ty)), stms_types @ [ ty ])
