@@ -10,7 +10,7 @@ let () =
   | Result.Ok ast ->
     Format.printf
       "%a\n%!"
-      Ast.pp_statements_list
+      (Ast.pp_statements_list (fun _ _ -> ()))
       (Neinml_lib.Closure.closure_converse ast)
   | Error _ -> Format.printf "Parsing error"
 ;;

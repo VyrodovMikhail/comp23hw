@@ -115,27 +115,20 @@
   $ ./demoParse.exe <<-EOF
   > let var x = fun y z -> (x + y * z)
   > EOF
-  []
-
-  $ ./demoParse.exe <<-EOF
-  > let a c d = 
-  > let m = c + d in
-  > let xx y = 1 + y in
-  > let k l = l + m + xx l in
-  > k (5 + m)
-  > EOF
-  []
-
-
-  $ ./demoParse.exe <<-EOF
-  > let fac n =
-  >   let rec fack n k =
-  >   if n <= 1 then k 1
-  >   else fack (n - 1) (fun m z -> k (m * n))
-  >   in
-  > fack n (fun x -> x)
-  > EOF
-  []
+  [(Define ("var",
+      (Func ("x",
+         (Lambda (
+            (Func ("y",
+               (Func ("z",
+                  (BinOp ((Variable ("x", )),
+                     (BinOp ((Variable ("y", )), (Variable ("z", )), Mul, )),
+                     Add, )),
+                  )),
+               )),
+            )),
+         )),
+      ))
+    ]
 
   $ ./demoParse.exe <<-EOF
   > let rec func x = 

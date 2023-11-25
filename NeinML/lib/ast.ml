@@ -44,3 +44,15 @@ type 'a statement =
   | RecDefine of name * 'a expression * 'a
 
 and 'a statements_list = 'a statement list [@@deriving show { with_path = false }]
+
+let cval x typ = Value (x, typ)
+let cvar x typ = Variable (x, typ)
+let cbinop x y op typ = BinOp (x, y, op, typ)
+let clam x typ = Lambda (x, typ)
+let capply x y typ = Apply (x, y, typ)
+let cfunc x y typ = Func (x, y, typ)
+let cdef x y typ = Define (x, y, typ)
+let crecdef x y typ = RecDefine (x, y, typ)
+let cletin x y z typ = LetIn (x, y, z, typ)
+let crecletin x y z typ = RecLetIn (x, y, z, typ)
+let cifthenelse x y z typ = IfThenElse (x, y, z, typ)

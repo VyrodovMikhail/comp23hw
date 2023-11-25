@@ -16,31 +16,40 @@ k m xx (5 + m)
   [(Define ("a",
       (Func ("c",
          (Func ("d",
-            (LetIn ("m", (Add ((Variable "c"), (Variable "d"))),
+            (LetIn ("m",
+               (BinOp ((Variable ("c", )), (Variable ("d", )), Add, )),
                (LetIn ("xx",
-                  (Func ("y", (Add ((Value (VInt 1)), (Variable "y"))))),
+                  (Func ("y",
+                     (BinOp ((Value ((VInt 1), )), (Variable ("y", )), Add, )), 
+                     )),
                   (LetIn ("k",
                      (Func ("m",
                         (Func ("xx",
                            (Func ("l",
-                              (Add ((Variable "l"),
-                                 (Add ((Variable "m"),
-                                    (Apply ((Variable "xx"), (Variable "l")))))
-                                 ))
-                              ))
-                           ))
+                              (BinOp ((Variable ("l", )),
+                                 (BinOp ((Variable ("m", )),
+                                    (Apply ((Variable ("xx", )),
+                                       (Variable ("l", )), )),
+                                    Add, )),
+                                 Add, )),
+                              )),
+                           )),
                         )),
                      (Apply (
-                        (Apply ((Apply ((Variable "k"), (Variable "m"))),
-                           (Variable "xx"))),
-                        (Add ((Value (VInt 5)), (Variable "m")))))
-                     ))
-                  ))
-               ))
-            ))
-         ))
+                        (Apply (
+                           (Apply ((Variable ("k", )), (Variable ("m", )), )),
+                           (Variable ("xx", )), )),
+                        (BinOp ((Value ((VInt 5), )), (Variable ("m", )), Add, 
+                           )),
+                        )),
+                     )),
+                  )),
+               )),
+            )),
+         )),
       ))
     ]
+
 
 
 (* В результате получается:
@@ -65,36 +74,43 @@ fack n (fun x y -> x)
          (RecLetIn ("fack",
             (Func ("n",
                (Func ("k",
-                  (IfThenElse ((LessOrEq ((Variable "n"), (Value (VInt 1)))),
-                     (Apply ((Apply ((Variable "k"), (Value (VInt 1)))),
-                        (Value (VInt 1)))),
+                  (IfThenElse (
+                     (BinOp ((Variable ("n", )), (Value ((VInt 1), )),
+                        LessOrEq, )),
                      (Apply (
-                        (Apply ((Variable "fack"),
-                           (Sub ((Variable "n"), (Value (VInt 1)))))),
+                        (Apply ((Variable ("k", )), (Value ((VInt 1), )), )),
+                        (Value ((VInt 1), )), )),
+                     (Apply (
+                        (Apply ((Variable ("fack", )),
+                           (BinOp ((Variable ("n", )), (Value ((VInt 1), )),
+                              Sub, )),
+                           )),
                         (Apply (
                            (Apply (
-                              (Lambda
+                              (Lambda (
                                  (Func ("k",
                                     (Func ("n",
                                        (Func ("m",
                                           (Func ("z",
-                                             (Apply ((Variable "k"),
-                                                (Mul ((Variable "m"),
-                                                   (Variable "n")))
-                                                ))
-                                             ))
-                                          ))
-                                       ))
-                                    ))),
-                              (Variable "k"))),
-                           (Variable "n")))
-                        ))
-                     ))
-                  ))
+                                             (Apply ((Variable ("k", )),
+                                                (BinOp ((Variable ("m", )),
+                                                   (Variable ("n", )), Mul, )),
+                                                )),
+                                             )),
+                                          )),
+                                       )),
+                                    )),
+                                 )),
+                              (Variable ("k", )), )),
+                           (Variable ("n", )), )),
+                        )),
+                     )),
+                  )),
                )),
-            (Apply ((Apply ((Variable "fack"), (Variable "n"))),
-               (Lambda (Func ("x", (Func ("y", (Variable "x"))))))))
-            ))
-         ))
+            (Apply ((Apply ((Variable ("fack", )), (Variable ("n", )), )),
+               (Lambda ((Func ("x", (Func ("y", (Variable ("x", )), )), )), )), 
+               )),
+            )),
+         )),
       ))
     ]

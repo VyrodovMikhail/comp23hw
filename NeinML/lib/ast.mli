@@ -46,3 +46,15 @@ type 'a statement =
       (** let rec var (arg1 arg2...) = <'a expression> *)
 
 and 'a statements_list = 'a statement list [@@deriving show { with_path = false }]
+
+val cval : const -> 'a -> 'a expression
+val cvar : name -> 'a -> 'a expression
+val cbinop : 'a expression -> 'a expression -> binop -> 'a -> 'a expression
+val clam : 'a expression -> 'a -> 'a expression
+val capply : 'a expression -> 'a expression -> 'a -> 'a expression
+val cfunc : name -> 'a expression -> 'a -> 'a expression
+val cdef : name -> 'a expression -> 'a -> 'a statement
+val crecdef : name -> 'a expression -> 'a -> 'a statement
+val cletin : name -> 'a expression -> 'a expression -> 'a -> 'a expression
+val crecletin : name -> 'a expression -> 'a expression -> 'a -> 'a expression
+val cifthenelse : 'a expression -> 'a expression -> 'a expression -> 'a -> 'a expression
