@@ -9,7 +9,7 @@
 (library
  (name neinml_lib)
  (public_name NeinML.Lib)
- (modules Ast Parser Typing Inferencer Closure)
+ (modules Ast Parser Typing Inferencer Monad Closure)
  (libraries base angstrom)
  (preprocess
   (pps ppx_expect ppx_deriving.show ppx_deriving.eq ppx_compare))

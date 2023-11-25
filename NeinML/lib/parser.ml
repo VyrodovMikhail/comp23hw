@@ -1,8 +1,10 @@
-(** Copyright 2023-2024, Mikhail Vyrodov *)
+(** Copyright 2023-2024, Mikhail Vyrodov and Vyacheslav Buchin *)
 
 (** SPDX-License-Identifier: LGPL-3.0-or-later *)
 
+open Monad
 open Angstrom
+module ListM = ListM (Angstrom)
 
 let is_space = function
   | ' ' | '\t' | '\n' | '\r' -> true
@@ -41,32 +43,37 @@ let is_bool =
   | _ -> fail "not bool"
 ;;
 
+let parse_operator = function
+  | "+" -> return Ast.Add
+  | "-" -> return Ast.Sub
+  | "*" -> return Ast.Mul
+  | "/" -> return Ast.Div
+  | "%" -> return Ast.Mod
+  | "&&" -> return Ast.And
+  | "||" -> return Ast.Or
+  | "=" -> return Ast.Equal
+  | "<>" -> return Ast.NotEqual
+  | "<" -> return Ast.Less
+  | "<=" -> return Ast.LessOrEq
+  | ">" -> return Ast.More
+  | ">=" -> return Ast.MoreOrEq
+  | _ -> fail "unbound operator"
+;;
+
 let integer = str_integer >>| int_of_string
-let cval x = Ast.Value x
-let cvar x = return (Ast.Variable x)
-let cadd x y = return (Ast.Add (x, y))
-let csub x y = return (Ast.Sub (x, y))
-let cmul x y = return (Ast.Mul (x, y))
-let cdiv x y = return (Ast.Div (x, y))
-let cmod x y = return (Ast.Mod (x, y))
-let ceq x y = return (Ast.Equal (x, y))
-let cmore x y = return (Ast.More (x, y))
-let cmoreeq x y = return (Ast.MoreOrEq (x, y))
-let cnoteq x y = return (Ast.NotEqual (x, y))
-let cless x y = return (Ast.Less (x, y))
-let clesseq x y = return (Ast.LessOrEq (x, y))
-let cand x y = return (Ast.And (x, y))
-let cor x y = return (Ast.Or (x, y))
-let capply x y = Ast.Apply (x, y)
-let cfunc x y = Ast.Func (x, y)
-let cdef x y = return (Ast.Define (x, y))
-let crecdef x y = return (Ast.RecDefine (x, y))
-let cletin x y z = return (Ast.LetIn (x, y, z))
-let crecletin x y z = return (Ast.RecLetIn (x, y, z))
-let clam x = return (Ast.Lambda x)
+let cval x = return @@ Ast.Value (x, ())
+let cvar x = return (Ast.Variable (x, ()))
+let cbinop x y op = parse_operator op >>= fun op -> return @@ Ast.BinOp (x, y, op, ())
+let clam x = return @@ Ast.Lambda (x, ())
+let capply x y = return @@ Ast.Apply (x, y, ())
+let cfunc x y = return @@ Ast.Func (x, y, ())
+let cdef x y = return (Ast.Define (x, y, ()))
+let crecdef x y = return (Ast.RecDefine (x, y, ()))
+let cletin x y z = return (Ast.LetIn (x, y, z, ()))
+let crecletin x y z = return (Ast.RecLetIn (x, y, z, ()))
 
 let cif condition then_statement else_statement =
-  return (Ast.IfThenElse (condition, then_statement, else_statement))
+  return (Ast.IfThenElse (condition, then_statement, else_statement, ()))
 ;;
 
 let keywords =
@@ -97,22 +104,20 @@ let varname =
   else return var_name
 ;;
 
-let expr_varname = varname >>= fun x -> return (Ast.Variable x)
-
 type dispatch =
-  { func_call : dispatch -> Ast.expression Angstrom.t
-  ; parse_lam : dispatch -> string -> Ast.expression Angstrom.t
-  ; parse_if : dispatch -> string -> Ast.expression Angstrom.t
-  ; arithmetical : dispatch -> string -> Ast.expression Angstrom.t
-  ; logical : dispatch -> string -> Ast.expression Angstrom.t
-  ; parse_and : dispatch -> string -> Ast.expression Angstrom.t
-  ; logical_sequence : dispatch -> string -> Ast.expression Angstrom.t
-  ; bracket : dispatch -> Ast.expression Angstrom.t
-  ; bracket_singles : dispatch -> string -> Ast.expression Angstrom.t
-  ; all_singles : dispatch -> string -> Ast.expression Angstrom.t
-  ; all_ops : dispatch -> string -> Ast.expression Angstrom.t
-  ; parse_letin : dispatch -> string -> Ast.expression Angstrom.t
-  ; parse_def : dispatch -> string -> Ast.statement Angstrom.t
+  { func_call : dispatch -> unit Ast.expression Angstrom.t
+  ; parse_lam : dispatch -> string -> unit Ast.expression Angstrom.t
+  ; parse_if : dispatch -> string -> unit Ast.expression Angstrom.t
+  ; arithmetical : dispatch -> string -> unit Ast.expression Angstrom.t
+  ; logical : dispatch -> string -> unit Ast.expression Angstrom.t
+  ; parse_and : dispatch -> string -> unit Ast.expression Angstrom.t
+  ; logical_sequence : dispatch -> string -> unit Ast.expression Angstrom.t
+  ; bracket : dispatch -> unit Ast.expression Angstrom.t
+  ; bracket_singles : dispatch -> string -> unit Ast.expression Angstrom.t
+  ; all_singles : dispatch -> string -> unit Ast.expression Angstrom.t
+  ; all_ops : dispatch -> string -> unit Ast.expression Angstrom.t
+  ; parse_letin : dispatch -> string -> unit Ast.expression Angstrom.t
+  ; parse_def : dispatch -> string -> unit Ast.statement Angstrom.t
   }
 
 type error = [ `ParsingError of string ]
@@ -121,17 +126,10 @@ let pp_error ppf = function
   | `ParsingError s -> Format.fprintf ppf "%s" s
 ;;
 
-let parse_int = spaces *> integer <* spaces >>= fun c -> return (Ast.Value (Ast.VInt c))
-let parse_bool = spaces *> is_bool <* spaces >>= fun c -> return (Ast.Value (Ast.VBool c))
+let parse_int = spaces *> integer <* spaces >>= fun c -> cval @@ Ast.VInt c
+let parse_bool = spaces *> is_bool <* spaces >>= fun c -> cval @@ Ast.VBool c
 let parse_const = [ parse_int; parse_bool ]
-
-let parse_part_singles =
-  choice
-    (parse_const
-    @ [ (spaces *> varname <* spaces >>= fun var_name -> return (Ast.Variable var_name)) ]
-    )
-;;
-
+let parse_part_singles = choice (parse_const @ [ spaces *> varname <* spaces >>= cvar ])
 let parse_singles = spaces *> parse_part_singles <* spaces
 
 let input_end_with end_input =
@@ -169,12 +167,10 @@ let parse_miniml =
   in
   let func_call pack =
     fix (fun _ ->
-      spaces
-      *> (expr_varname
-         <|> (char '(' *> pack.parse_lam pack ")" <* char ')')
-         >>= fun func ->
-         many (pack.bracket pack <|> parse_singles)
-         >>= fun args -> return (List.fold_left capply func args)))
+      spaces *> (varname >>= fun x -> cvar x)
+      <|> (char '(' *> pack.parse_lam pack ")" <* char ')')
+      >>= fun x_var ->
+      many (pack.bracket pack <|> parse_singles) >>= ListM.fold_left capply x_var)
   in
   let parse_lam pack inp_end =
     let parse_bracket_inner_def =
@@ -192,11 +188,10 @@ let parse_miniml =
       *> (pack.all_ops pack inp_end
          <|> parse_bracket_inner_def
          <|> pack.parse_letin pack inp_end)
-      >>= fun body -> clam (List.fold_right cfunc args body))
+      >>= ListM.fold_right cfunc args
+      >>= fun lam_expr -> clam lam_expr)
   in
-  let parse_var =
-    spaces *> varname <* spaces >>= fun var_name -> return (Ast.Variable var_name)
-  in
+  let parse_var = spaces *> varname <* spaces >>= cvar in
   let parse_part_singles = choice (parse_const @ [ parse_var ]) in
   let parse_singles = spaces *> parse_part_singles <* spaces in
   let parse_if pack inp_end =
@@ -249,15 +244,7 @@ let parse_miniml =
       >>= fun operator ->
       pack.bracket_singles pack end_input
       <|> spaces *> pack.all_singles pack end_input
-      >>= fun right ->
-      let create_expr =
-        match operator with
-        | "*" -> cmul left right
-        | "/" -> cdiv left right
-        | "%" -> cmod left right
-        | _ -> fail "Not priority operator"
-      in
-      create_expr
+      >>= fun right -> cbinop left right operator
     in
     spaces
     *> (pack.bracket_singles pack end_input <|> parse_priority <* input_end end_input)
@@ -271,14 +258,7 @@ let parse_miniml =
         >>= fun left ->
         pack.all_singles pack end_input
         <* input_end end_input
-        >>= fun right ->
-        let create_expr =
-          match op with
-          | "+" -> cadd left right
-          | "-" -> csub left right
-          | _ -> fail "op is not + or - operator"
-        in
-        create_expr
+        >>= fun right -> cbinop left right op
       in
       let parse_simple_op end_input op =
         parse_simple_op_without_brackets end_input op :: []
@@ -297,15 +277,7 @@ let parse_miniml =
             spaces *> pack.all_singles pack end_input
             <|> spaces *> pack.arithmetical pack end_input
         in
-        matching left
-        >>= fun right ->
-        let create_expr =
-          match operator with
-          | "+" -> cadd left right
-          | "-" -> csub left right
-          | _ -> fail "op is not + or - operator"
-        in
-        create_expr
+        matching left >>= fun right -> cbinop left right operator
       in
       choice
         (parse_simple_ops end_input
@@ -323,15 +295,7 @@ let parse_miniml =
         <|> pack.arithmetical pack inp_end
         <|> pack.logical pack inp_end
         <* spaces
-        >>= fun right ->
-        match operator with
-        | "=" -> ceq left right
-        | ">" -> cmore left right
-        | ">=" -> cmoreeq left right
-        | "<" -> cless left right
-        | "<=" -> clesseq left right
-        | "<>" -> cnoteq left right
-        | _ -> fail "operator is not a simple logical operator"
+        >>= fun right -> cbinop left right operator
       in
       let parse_logical end_input =
         [ parse_logical_op end_input "="
@@ -356,10 +320,7 @@ let parse_miniml =
         <|> pack.logical pack end_inp
         <|> pack.parse_and pack inp_end
         <* spaces
-        >>= fun right ->
-        match operator with
-        | "&&" -> cand left right
-        | _ -> fail "operator is not && operator"
+        >>= fun right -> cbinop left right operator
       in
       parse_and inp_end "&&")
   in
@@ -377,11 +338,7 @@ let parse_miniml =
         <|> pack.parse_and pack inp_end
         <|> pack.logical_sequence pack inp_end
         <* spaces
-        >>= fun right ->
-        match operator with
-        | "&&" -> cand left right
-        | "||" -> cor left right
-        | _ -> fail "operator is not a && or || operator"
+        >>= fun right -> cbinop left right operator
       in
       parse_or inp_end "||")
   in
@@ -422,8 +379,7 @@ let parse_miniml =
       *> spaces
       *> (pack.all_ops pack "in" <|> pack.parse_letin pack "in")
       <* spaces
-      >>= fun body ->
-      return (List.fold_right cfunc args body)
+      >>= ListM.fold_right cfunc args
       <* string "in"
       >>= fun parsed_func ->
       pack.all_ops pack inp_end
@@ -445,8 +401,7 @@ let parse_miniml =
       >>= fun args ->
       char '=' *> spaces *> (pack.all_ops pack inp_end <|> pack.parse_letin pack inp_end)
       <* spaces
-      >>= fun body ->
-      return (List.fold_right cfunc args body)
+      >>= ListM.fold_right cfunc args
       >>= fun parsed_func ->
       match rec_flag with
       | true -> crecdef fun_name parsed_func
