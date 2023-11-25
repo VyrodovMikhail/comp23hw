@@ -17,10 +17,10 @@
   > let test = 1 + 2 * 3 - 10
   > EOF
   [(Define ("test",
-      (Add ((Value ((VInt 1), )),
-         (Sub ((Mul ((Value ((VInt 2), )), (Value ((VInt 3), )), )),
-            (Value ((VInt 10), )), )),
-         )),
+      (BinOp ((Value ((VInt 1), )),
+         (BinOp ((BinOp ((Value ((VInt 2), )), (Value ((VInt 3), )), Mul, )),
+            (Value ((VInt 10), )), Sub, )),
+         Add, )),
       ))
     ]
 
@@ -28,12 +28,14 @@
   > let test = 1 + 2 * 3 / 10 - 10 % 5
   > EOF
   [(Define ("test",
-      (Add ((Value ((VInt 1), )),
-         (Sub (
-            (Mul ((Value ((VInt 2), )),
-               (Div ((Value ((VInt 3), )), (Value ((VInt 10), )), )), )),
-            (Mod ((Value ((VInt 10), )), (Value ((VInt 5), )), )), )),
-         )),
+      (BinOp ((Value ((VInt 1), )),
+         (BinOp (
+            (BinOp ((Value ((VInt 2), )),
+               (BinOp ((Value ((VInt 3), )), (Value ((VInt 10), )), Div, )),
+               Mul, )),
+            (BinOp ((Value ((VInt 10), )), (Value ((VInt 5), )), Mod, )), Sub, 
+            )),
+         Add, )),
       ))
     ]
 
@@ -52,10 +54,13 @@
   > EOF
   [(Define ("id",
       (Func ("var",
-         (Or (
-            (And ((Less ((Variable ("var", )), (Value ((VInt 10), )), )),
-               (Less ((Variable ("var", )), (Value ((VInt 5), )), )), )),
-            (NotEqual ((Variable ("var", )), (Value ((VInt 4), )), )), )),
+         (BinOp (
+            (BinOp (
+               (BinOp ((Variable ("var", )), (Value ((VInt 10), )), Less, )),
+               (BinOp ((Variable ("var", )), (Value ((VInt 5), )), Less, )),
+               And, )),
+            (BinOp ((Variable ("var", )), (Value ((VInt 4), )), NotEqual, )),
+            Or, )),
          )),
       ))
     ]
@@ -65,10 +70,13 @@
   > EOF
   [(Define ("id",
       (Func ("var",
-         (Or (
-            (And ((Less ((Variable ("var", )), (Value ((VInt 10), )), )),
-               (Less ((Variable ("var", )), (Value ((VInt 5), )), )), )),
-            (NotEqual ((Variable ("var", )), (Value ((VInt 4), )), )), )),
+         (BinOp (
+            (BinOp (
+               (BinOp ((Variable ("var", )), (Value ((VInt 10), )), Less, )),
+               (BinOp ((Variable ("var", )), (Value ((VInt 5), )), Less, )),
+               And, )),
+            (BinOp ((Variable ("var", )), (Value ((VInt 4), )), NotEqual, )),
+            Or, )),
          )),
       ))
     ]
@@ -78,10 +86,13 @@
   > EOF
   [(Define ("id",
       (Func ("var",
-         (Or (
-            (And ((Less ((Variable ("var", )), (Value ((VInt 10), )), )),
-               (Less ((Variable ("var", )), (Value ((VInt 5), )), )), )),
-            (NotEqual ((Variable ("var", )), (Value ((VInt 4), )), )), )),
+         (BinOp (
+            (BinOp (
+               (BinOp ((Variable ("var", )), (Value ((VInt 10), )), Less, )),
+               (BinOp ((Variable ("var", )), (Value ((VInt 5), )), Less, )),
+               And, )),
+            (BinOp ((Variable ("var", )), (Value ((VInt 4), )), NotEqual, )),
+            Or, )),
          )),
       ))
     ]
@@ -92,8 +103,10 @@
   [(Define ("var",
       (Func ("x",
          (IfThenElse (
-            (Or ((More ((Variable ("x", )), (Value ((VInt 15), )), )),
-               (Less ((Variable ("x", )), (Value ((VInt 10), )), )), )),
+            (BinOp (
+               (BinOp ((Variable ("x", )), (Value ((VInt 15), )), More, )),
+               (BinOp ((Variable ("x", )), (Value ((VInt 10), )), Less, )), Or, 
+               )),
             (Variable ("x", )), (Value ((VInt 9), )), )),
          )),
       ))
@@ -106,8 +119,9 @@
       (Func ("x",
          (Func ("y",
             (Func ("z",
-               (Add ((Variable ("x", )),
-                  (Mul ((Variable ("y", )), (Variable ("z", )), )), )),
+               (BinOp ((Variable ("x", )),
+                  (BinOp ((Variable ("y", )), (Variable ("z", )), Mul, )), Add, 
+                  )),
                )),
             )),
          )),
@@ -120,7 +134,8 @@
   [(Define ("var_func",
       (Func ("y",
          (Func ("z",
-            (IfThenElse ((More ((Variable ("y", )), (Variable ("z", )), )),
+            (IfThenElse (
+               (BinOp ((Variable ("y", )), (Variable ("z", )), More, )),
                (Value ((VBool true), )), (Value ((VBool false), )), )),
             )),
          )),
@@ -133,10 +148,11 @@
   > EOF
   [(RecDefine ("func",
       (Func ("x",
-         (IfThenElse ((More ((Variable ("x", )), (Value ((VInt 15), )), )),
+         (IfThenElse (
+            (BinOp ((Variable ("x", )), (Value ((VInt 15), )), More, )),
             (Variable ("x", )),
             (Apply ((Variable ("func", )),
-               (Add ((Variable ("x", )), (Variable ("x", )), )), )),
+               (BinOp ((Variable ("x", )), (Variable ("x", )), Add, )), )),
             )),
          )),
       ))
@@ -158,17 +174,21 @@
             (RecLetIn ("test2",
                (Func ("y",
                   (IfThenElse (
-                     (More ((Variable ("y", )), (Value ((VInt 10), )), )),
-                     (Add ((Value ((VInt 30), )), (Variable ("test1", )), )),
-                     (Add ((Variable ("test1", )),
-                        (Apply ((Variable ("test2", )),
-                           (Add ((Variable ("y", )), (Value ((VInt 1), )), )), 
-                           )),
+                     (BinOp ((Variable ("y", )), (Value ((VInt 10), )), More, 
                         )),
+                     (BinOp ((Value ((VInt 30), )), (Variable ("test1", )),
+                        Add, )),
+                     (BinOp ((Variable ("test1", )),
+                        (Apply ((Variable ("test2", )),
+                           (BinOp ((Variable ("y", )), (Value ((VInt 1), )),
+                              Add, )),
+                           )),
+                        Add, )),
                      )),
                   )),
-               (Add ((Variable ("test1", )),
-                  (Apply ((Variable ("test2", )), (Variable ("x", )), )), )),
+               (BinOp ((Variable ("test1", )),
+                  (Apply ((Variable ("test2", )), (Variable ("x", )), )), Add, 
+                  )),
                )),
             )),
          )),
@@ -180,12 +200,13 @@
   > EOF
   [(RecDefine ("fac",
       (Func ("n",
-         (IfThenElse ((Equal ((Variable ("n", )), (Value ((VInt 1), )), )),
+         (IfThenElse (
+            (BinOp ((Variable ("n", )), (Value ((VInt 1), )), Equal, )),
             (Value ((VInt 1), )),
-            (Mul ((Variable ("n", )),
+            (BinOp ((Variable ("n", )),
                (Apply ((Variable ("fac", )),
-                  (Sub ((Variable ("n", )), (Value ((VInt 1), )), )), )),
-               )),
+                  (BinOp ((Variable ("n", )), (Value ((VInt 1), )), Sub, )), )),
+               Mul, )),
             )),
          )),
       ))
@@ -205,13 +226,16 @@
             (Func ("num",
                (Func ("acc",
                   (IfThenElse (
-                     (Equal ((Variable ("num", )), (Value ((VInt 1), )), )),
+                     (BinOp ((Variable ("num", )), (Value ((VInt 1), )), Equal, 
+                        )),
                      (Variable ("acc", )),
                      (Apply (
                         (Apply ((Variable ("helper", )),
-                           (Sub ((Variable ("num", )), (Value ((VInt 1), )), )),
+                           (BinOp ((Variable ("num", )), (Value ((VInt 1), )),
+                              Sub, )),
                            )),
-                        (Mul ((Variable ("acc", )), (Variable ("num", )), )), 
+                        (BinOp ((Variable ("acc", )), (Variable ("num", )),
+                           Mul, )),
                         )),
                      )),
                   )),
@@ -229,10 +253,12 @@
   > let val = 15
   > EOF
   [(Define ("simple_func",
-      (Func ("x", (Add ((Variable ("x", )), (Value ((VInt 1), )), )), )), ));
+      (Func ("x", (BinOp ((Variable ("x", )), (Value ((VInt 1), )), Add, )), )),
+      ));
     (Define ("if_func",
        (Func ("x",
-          (IfThenElse ((More ((Variable ("x", )), (Value ((VInt 0), )), )),
+          (IfThenElse (
+             (BinOp ((Variable ("x", )), (Value ((VInt 0), )), More, )),
              (Value ((VBool true), )), (Value ((VBool false), )), )),
           )),
        ));

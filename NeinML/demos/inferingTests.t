@@ -75,7 +75,7 @@
   $ ./demoInfer.exe <<-EOF
   > let var_func = fun y z -> (if y > z then true else false)
   > EOF
-  'var1 -> 'var1 -> bool
+  int -> int -> bool
 
   $ ./demoInfer.exe <<-EOF
   > let fac n = 
@@ -126,3 +126,8 @@
   > EOF
   int -> bool
   int -> int
+
+  $ ./demoInfer.exe <<-EOF
+  > let rec fix f = f (fix f)
+  > EOF
+  ('var3 -> 'var3) -> 'var3

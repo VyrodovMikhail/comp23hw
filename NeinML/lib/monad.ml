@@ -1,3 +1,7 @@
+(** Copyright 2023-2024, Mikhail Vyrodov and Vyacheslav Buchin *)
+
+(** SPDX-License-Identifier: LGPL-3.0-or-later *)
+
 module type Monad = sig
   type 'a t
 

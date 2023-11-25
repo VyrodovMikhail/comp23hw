@@ -11,25 +11,28 @@ type const =
 
 type varname_part = VarPart of name [@@deriving show { with_path = false }]
 
+type binop = 
+  | Add (** a + b *)
+  | Sub (** a - b *)
+  | Mul (** a * b *)
+  | Div (** a / b *)
+  | Mod (** a % b *)
+  | And (** a && b *)
+  | Or (** a || b *)
+  | Equal (** a = b *)
+  | NotEqual (** a <> b *)
+  | Less (** a < b *)
+  | LessOrEq (** a <= b *)
+  | More (** a > b *)
+  | MoreOrEq (** a >= b *)
+
 type 'a expression =
-  | Add of 'a expression * 'a expression * 'a (** a + b *)
-  | Sub of 'a expression * 'a expression * 'a (** a - b *)
-  | Mul of 'a expression * 'a expression * 'a (** a * b *)
-  | Div of 'a expression * 'a expression * 'a (** a / b *)
-  | Mod of 'a expression * 'a expression * 'a (** a % b *)
-  | And of 'a expression * 'a expression * 'a (** a && b *)
-  | Or of 'a expression * 'a expression * 'a (** a || b *)
-  | Equal of 'a expression * 'a expression * 'a (** a = b *)
-  | NotEqual of 'a expression * 'a expression * 'a (** a <> b *)
-  | Less of 'a expression * 'a expression * 'a (** a < b *)
-  | LessOrEq of 'a expression * 'a expression * 'a (** a <= b *)
-  | More of 'a expression * 'a expression * 'a (** a > b *)
-  | MoreOrEq of 'a expression * 'a expression * 'a (** a >= b *)
+  | BinOp of 'a expression * 'a expression * binop * 'a (** x * y *)
   | LetIn of name * 'a expression * 'a expression * 'a (** let func = ... in ... *)
   | RecLetIn of name * 'a expression * 'a expression * 'a (** let rec func = ... in ... *)
   | IfThenElse of 'a expression * 'a expression * 'a expression * 'a
       (** if condition then expr1 else expr2 *)
-  | Func of name * 'a expression * 'a (** ast 'a expression for defining functions with currying *)
+  | Func of name * 'a expression * 'a (** ast expression for defining functions with currying *)
   | Apply of 'a expression * 'a expression * 'a (** func arg1 arg2 ... *)
   | Variable of name * 'a (** var *)
   | Value of const * 'a (** value (const) *)

@@ -43,22 +43,27 @@ let is_bool =
   | _ -> fail "not bool"
 ;;
 
+let parse_operator = function
+  | "+" -> return Ast.Add
+  | "-" -> return Ast.Sub
+  | "*" -> return Ast.Mul
+  | "/" -> return Ast.Div
+  | "%" -> return Ast.Mod
+  | "&&" -> return Ast.And
+  | "||" -> return Ast.Or
+  | "=" -> return Ast.Equal
+  | "<>" -> return Ast.NotEqual
+  | "<" -> return Ast.Less
+  | "<=" -> return Ast.LessOrEq
+  | ">" -> return Ast.More
+  | ">=" -> return Ast.MoreOrEq
+  | _ -> fail "unbound operator"
+;;
+
 let integer = str_integer >>| int_of_string
 let cval x = return @@ Ast.Value (x, ())
 let cvar x = return (Ast.Variable (x, ()))
-let cadd x y = return (Ast.Add (x, y, ()))
-let csub x y = return (Ast.Sub (x, y, ()))
-let cmul x y = return (Ast.Mul (x, y, ()))
-let cdiv x y = return (Ast.Div (x, y, ()))
-let cmod x y = return (Ast.Mod (x, y, ()))
-let ceq x y = return (Ast.Equal (x, y, ()))
-let cmore x y = return (Ast.More (x, y, ()))
-let cmoreeq x y = return (Ast.MoreOrEq (x, y, ()))
-let cnoteq x y = return (Ast.NotEqual (x, y, ()))
-let cless x y = return (Ast.Less (x, y, ()))
-let clesseq x y = return (Ast.LessOrEq (x, y, ()))
-let cand x y = return (Ast.And (x, y, ()))
-let cor x y = return (Ast.Or (x, y, ()))
+let cbinop x y op = parse_operator op >>= fun op -> return @@ Ast.BinOp (x, y, op, ())
 let capply x y = return @@ Ast.Apply (x, y, ())
 let cfunc x y = return @@ Ast.Func (x, y, ())
 let cdef x y = return (Ast.Define (x, y, ()))
@@ -237,15 +242,7 @@ let parse_miniml =
       >>= fun operator ->
       pack.bracket_singles pack end_input
       <|> spaces *> pack.all_singles pack end_input
-      >>= fun right ->
-      let create_expr =
-        match operator with
-        | "*" -> cmul left right
-        | "/" -> cdiv left right
-        | "%" -> cmod left right
-        | _ -> fail "Not priority operator"
-      in
-      create_expr
+      >>= fun right -> cbinop left right operator
     in
     spaces
     *> (pack.bracket_singles pack end_input <|> parse_priority <* input_end end_input)
@@ -259,14 +256,7 @@ let parse_miniml =
         >>= fun left ->
         pack.all_singles pack end_input
         <* input_end end_input
-        >>= fun right ->
-        let create_expr =
-          match op with
-          | "+" -> cadd left right
-          | "-" -> csub left right
-          | _ -> fail "op is not + or - operator"
-        in
-        create_expr
+        >>= fun right -> cbinop left right op
       in
       let parse_simple_op end_input op =
         parse_simple_op_without_brackets end_input op :: []
@@ -285,15 +275,7 @@ let parse_miniml =
             spaces *> pack.all_singles pack end_input
             <|> spaces *> pack.arithmetical pack end_input
         in
-        matching left
-        >>= fun right ->
-        let create_expr =
-          match operator with
-          | "+" -> cadd left right
-          | "-" -> csub left right
-          | _ -> fail "op is not + or - operator"
-        in
-        create_expr
+        matching left >>= fun right -> cbinop left right operator
       in
       choice
         (parse_simple_ops end_input
@@ -311,15 +293,7 @@ let parse_miniml =
         <|> pack.arithmetical pack inp_end
         <|> pack.logical pack inp_end
         <* spaces
-        >>= fun right ->
-        match operator with
-        | "=" -> ceq left right
-        | ">" -> cmore left right
-        | ">=" -> cmoreeq left right
-        | "<" -> cless left right
-        | "<=" -> clesseq left right
-        | "<>" -> cnoteq left right
-        | _ -> fail "operator is not a simple logical operator"
+        >>= fun right -> cbinop left right operator
       in
       let parse_logical end_input =
         [ parse_logical_op end_input "="
@@ -344,10 +318,7 @@ let parse_miniml =
         <|> pack.logical pack end_inp
         <|> pack.parse_and pack inp_end
         <* spaces
-        >>= fun right ->
-        match operator with
-        | "&&" -> cand left right
-        | _ -> fail "operator is not && operator"
+        >>= fun right -> cbinop left right operator
       in
       parse_and inp_end "&&")
   in
@@ -365,11 +336,7 @@ let parse_miniml =
         <|> pack.parse_and pack inp_end
         <|> pack.logical_sequence pack inp_end
         <* spaces
-        >>= fun right ->
-        match operator with
-        | "&&" -> cand left right
-        | "||" -> cor left right
-        | _ -> fail "operator is not a && or || operator"
+        >>= fun right -> cbinop left right operator
       in
       parse_or inp_end "||")
   in
