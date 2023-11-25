@@ -103,22 +103,78 @@
   > EOF
   [(Define ("var",
       (Func ("x",
-         (Func ("y",
-            (Func ("z",
-               (Add ((Variable "x"), (Mul ((Variable "y"), (Variable "z")))))))
+         (Lambda
+            (Func ("y",
+               (Func ("z",
+                  (Add ((Variable "x"), (Mul ((Variable "y"), (Variable "z")))
+                     ))
+                  ))
+               )))
+         ))
+      ))
+    ]
+
+  $ ./demoParse.exe <<-EOF
+  > let a c d = 
+  > let m = c + d in
+  > let xx y = 1 + y in
+  > let k l = l + m + xx l in
+  > k (5 + m)
+  > EOF
+  [(Define ("a",
+      (Func ("c",
+         (Func ("d",
+            (LetIn ("m", (Add ((Variable "c"), (Variable "d"))),
+               (LetIn ("xx",
+                  (Func ("y", (Add ((Value (VInt 1)), (Variable "y"))))),
+                  (LetIn ("k",
+                     (Func ("l",
+                        (Add ((Variable "l"),
+                           (Add ((Variable "m"),
+                              (Apply ((Variable "xx"), (Variable "l")))))
+                           ))
+                        )),
+                     (Apply ((Variable "k"),
+                        (Add ((Value (VInt 5)), (Variable "m")))))
+                     ))
+                  ))
+               ))
             ))
          ))
       ))
     ]
 
   $ ./demoParse.exe <<-EOF
-  > let var_func = fun y z -> (if y > z then true else false)
+  > let fac n =
+  >   let rec fack n k =
+  >   if n <= 1 then k 1
+  >   else fack (n - 1) (fun m z -> k (m * n))
+  >   in
+  > fack n (fun x -> x)
   > EOF
-  [(Define ("var_func",
-      (Func ("y",
-         (Func ("z",
-            (IfThenElse ((More ((Variable "y"), (Variable "z"))),
-               (Value (VBool true)), (Value (VBool false))))
+  [(Define ("fac",
+      (Func ("n",
+         (RecLetIn ("fack",
+            (Func ("n",
+               (Func ("k",
+                  (IfThenElse ((LessOrEq ((Variable "n"), (Value (VInt 1)))),
+                     (Apply ((Variable "k"), (Value (VInt 1)))),
+                     (Apply (
+                        (Apply ((Variable "fack"),
+                           (Sub ((Variable "n"), (Value (VInt 1)))))),
+                        (Lambda
+                           (Func ("m",
+                              (Func ("z",
+                                 (Apply ((Variable "k"),
+                                    (Mul ((Variable "m"), (Variable "n")))))
+                                 ))
+                              )))
+                        ))
+                     ))
+                  ))
+               )),
+            (Apply ((Apply ((Variable "fack"), (Variable "n"))),
+               (Lambda (Func ("x", (Variable "x"))))))
             ))
          ))
       ))

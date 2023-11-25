@@ -29,6 +29,7 @@ type expression =
   | RecLetIn of name * expression * expression (** let rec func = ... in ... *)
   | IfThenElse of expression * expression * expression
       (** if condition then expr1 else expr2 *)
+  | Lambda of expression (** fun args -> body *)
   | Func of name * expression (** ast expression for defining functions with currying *)
   | Apply of expression * expression (** func arg1 arg2 ... *)
   | Variable of name (** var *)
@@ -40,3 +41,25 @@ type statement =
   | RecDefine of name * expression (** let rec var (arg1 arg2...) = <expression> *)
 
 and statements_list = statement list [@@deriving show { with_path = false }]
+
+val cval : const -> expression
+val cadd : expression -> expression -> expression
+val csub : expression -> expression -> expression
+val cmul : expression -> expression -> expression
+val cdiv : expression -> expression -> expression
+val cmod : expression -> expression -> expression
+val ceq : expression -> expression -> expression
+val cand : expression -> expression -> expression
+val cor : expression -> expression -> expression
+val cnoteq : expression -> expression -> expression
+val cless : expression -> expression -> expression
+val clesseq : expression -> expression -> expression
+val cmore : expression -> expression -> expression
+val cmoreeq : expression -> expression -> expression
+val capply : expression -> expression -> expression
+val cfunc : name -> expression -> expression
+val cdef : name -> expression -> statement
+val crecdef : name -> expression -> statement
+val cletin : name -> expression -> expression -> expression
+val crecletin : name -> expression -> expression -> expression
+val clam : expression -> expression

@@ -63,6 +63,7 @@ let cdef x y = return (Ast.Define (x, y))
 let crecdef x y = return (Ast.RecDefine (x, y))
 let cletin x y z = return (Ast.LetIn (x, y, z))
 let crecletin x y z = return (Ast.RecLetIn (x, y, z))
+let clam x = return (Ast.Lambda x)
 
 let cif condition then_statement else_statement =
   return (Ast.IfThenElse (condition, then_statement, else_statement))
@@ -95,6 +96,8 @@ let varname =
        language."
   else return var_name
 ;;
+
+let expr_varname = varname >>= fun x -> return (Ast.Variable x)
 
 type dispatch =
   { func_call : dispatch -> Ast.expression Angstrom.t
@@ -166,12 +169,12 @@ let parse_miniml =
   in
   let func_call pack =
     fix (fun _ ->
-      spaces *> varname
-      >>= fun x ->
-      return (Ast.Variable x)
-      >>= fun x_var ->
-      many (pack.bracket pack <|> parse_singles)
-      >>= fun args -> return (List.fold_left capply x_var args))
+      spaces
+      *> (expr_varname
+         <|> (char '(' *> pack.parse_lam pack ")" <* char ')')
+         >>= fun func ->
+         many (pack.bracket pack <|> parse_singles)
+         >>= fun args -> return (List.fold_left capply func args)))
   in
   let parse_lam pack inp_end =
     let parse_bracket_inner_def =
@@ -189,7 +192,7 @@ let parse_miniml =
       *> (pack.all_ops pack inp_end
          <|> parse_bracket_inner_def
          <|> pack.parse_letin pack inp_end)
-      >>= fun body -> return (List.fold_right cfunc args body))
+      >>= fun body -> clam (List.fold_right cfunc args body))
   in
   let parse_var =
     spaces *> varname <* spaces >>= fun var_name -> return (Ast.Variable var_name)
@@ -414,7 +417,10 @@ let parse_miniml =
       >>= fun fun_name ->
       many (spaces *> varname <* spaces)
       >>= fun args ->
-      input_end "=" *> char '=' *> spaces *> pack.all_ops pack "in"
+      input_end "="
+      *> char '='
+      *> spaces
+      *> (pack.all_ops pack "in" <|> pack.parse_letin pack "in")
       <* spaces
       >>= fun body ->
       return (List.fold_right cfunc args body)

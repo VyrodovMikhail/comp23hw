@@ -340,6 +340,7 @@ let infer_stmt =
       let* s3, t3 = helper TypeEnv.(extend (apply s2 env) (name, t2)) outer_expr in
       let* final_subst = Subst.compose s2 s3 in
       return (final_subst, t3)
+    | Ast.Lambda body -> helper env body
     | Ast.Func (param_name, def) ->
       let* tv = fresh_var in
       let env = TypeEnv.extend env (param_name, S (VarSet.empty, tv)) in
