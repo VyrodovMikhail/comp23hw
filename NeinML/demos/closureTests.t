@@ -5,7 +5,7 @@ let xx y = 1 + y in
 let k m xx l = l + m + xx l in
 k m xx (5 + m)
 *)
-  
+
   $ ./demoClosure.exe <<-EOF
   > let a c d = 
   > let m = c + d in
@@ -114,3 +114,25 @@ fack n (fun x y -> x)
          )),
       ))
     ]
+
+
+
+  $ ./demoClosure.exe <<-EOF
+  > let f x =
+  >   let g = 4 in
+  >   let g y = x + y + g in
+  >   g x
+  > EOF
+  kek
+
+
+
+  $ ./demoClosure.exe <<-EOF
+  > let f x =
+  >   let rec g y =
+  >      if y <= 1 then x 
+  >      else
+  >         x * y + g (y - 1)
+  >   in g x
+  > EOF
+  kek
