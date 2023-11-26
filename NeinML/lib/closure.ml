@@ -7,6 +7,105 @@ let empty_map = Base.Map.empty (module Base.String)
 
 type name_set = (string, Base.String.comparator_witness) Base.Set.t
 type free_vars_map_type = (string, name_set, Base.String.comparator_witness) Base.Map.t
+type name_mapping = (string, string, Base.String.comparator_witness) Base.Map.t
+
+module IntState = struct
+  include Monad.State (struct
+      type t = int * name_set
+    end)
+
+  let ( let* ) = ( >>= )
+
+  let incrementCounter =
+    let* counter, scope = get in
+    let* () = put (counter + 1, scope) in
+    return counter
+  ;;
+
+  let fresh name =
+    let* num = incrementCounter in
+    return @@ String.concat "" [ "__neinml_uni"; string_of_int num; name ]
+  ;;
+
+  let get_scope =
+    let* _, scope = get in
+    return scope
+  ;;
+
+  let put_scope scope =
+    let* counter, _ = get in
+    put (counter, scope)
+  ;;
+end
+
+module ListM = Monad.ListM (IntState)
+
+let unique_names stmts =
+  let open IntState in
+  let process_name mapping name =
+    let* scope = get_scope in
+    if Base.Set.mem scope name
+    then
+      let* new_name = fresh name in
+      let mapping = Base.Map.set mapping ~key:name ~data:new_name in
+      return (mapping, new_name)
+    else
+      let* () = Base.Set.add scope name |> put_scope in
+      return (mapping, name)
+  in
+  let rec expr_helper mapping = function
+    | Lambda _ -> failwith "please remove it!!!!!!!"
+    | BinOp (op_left, op_right, op, meta) ->
+      let* op_left = expr_helper mapping op_left in
+      let* op_right = expr_helper mapping op_right in
+      return @@ BinOp (op_left, op_right, op, meta)
+    | IfThenElse (cond, thn, els, meta) ->
+      let* cond = expr_helper mapping cond in
+      let* thn = expr_helper mapping thn in
+      let* els = expr_helper mapping els in
+      return @@ IfThenElse (cond, thn, els, meta)
+    | Apply (f, x, meta) ->
+      let* f = expr_helper mapping f in
+      let* x = expr_helper mapping x in
+      return @@ Apply (f, x, meta)
+    | Value _ as v -> return v
+    | Variable (name, meta) ->
+      let new_name = Base.Map.find mapping name |> Base.Option.value ~default:name in
+      return @@ Variable (new_name, meta)
+    | Func (name, body, meta) ->
+      let* mapping, new_name = process_name mapping name in
+      let* body = expr_helper mapping body in
+      return @@ Func (new_name, body, meta)
+    | LetIn (name, def, body, meta) ->
+      let* new_mapping, new_name = process_name mapping name in
+      let* new_def = expr_helper mapping def in
+      let* new_body = expr_helper new_mapping body in
+      return @@ LetIn (new_name, new_def, new_body, meta)
+    | RecLetIn (name, def, body, meta) ->
+      let* mapping, new_name = process_name mapping name in
+      let* new_def = expr_helper mapping def in
+      let* new_body = expr_helper mapping body in
+      return @@ RecLetIn (new_name, new_def, new_body, meta)
+  in
+  let stmt_helper mapping = function
+    | Define (name, body, meta) ->
+      let* new_body = expr_helper mapping body in
+      let* mapping, new_name = process_name mapping name in
+      return (Define (new_name, new_body, meta), mapping)
+    | RecDefine (name, body, meta) ->
+      let* mapping, new_name = process_name mapping name in
+      let* new_body = expr_helper mapping body in
+      return (RecDefine (new_name, new_body, meta), mapping)
+  in
+  let rename_stmt (mapping, stmts) stmt =
+    let* stmt, mapping = stmt_helper mapping stmt in
+    return (mapping, stmt :: stmts)
+  in
+  ListM.fold_left rename_stmt (empty_map, []) stmts
+  |> IntState.eval (0, empty)
+  |> snd
+  |> List.rev
+;;
 
 let get_args_body (func : _ Ast.expression) =
   let rec func_helper acc = function
