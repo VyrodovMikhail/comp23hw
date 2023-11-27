@@ -1,3 +1,7 @@
+(** Copyright 2023-2024, Mikhail Vyrodov and Vyacheslav Buchin *)
+
+(** SPDX-License-Identifier: LGPL-3.0-or-later *)
+
 open Ast
 open Typing
 open Monad
@@ -175,7 +179,7 @@ let check_func stmt =
 let get_letin_constructor = function
   | LetIn (_, _, _, _) -> cletin
   | RecLetIn (_, _, _, _) -> crecletin
-  | _ -> fun _ _ _ -> cvar "Not happening"
+  | _ -> fun _ _ _ -> failwith "Not happening"
 ;;
 
 let get_define_constructor = function
@@ -321,7 +325,6 @@ let rec converse_stms (global_scope : name_set) (acc : ty statements_list) = fun
      | Define (name, body, _) | RecDefine (name, body, _) ->
        let args, def_body = get_args_body body in
        let new_scope = Base.Set.add global_scope name in
-       (* let scope_for_conversion = Base.Set.union new_scope (of_list args) in *)
        let conversed_body = closure_conversion empty_map new_scope NotFunctype def_body in
        let conversed_func =
          Base.List.fold args ~init:conversed_body ~f:(fun acc arg ->
@@ -334,17 +337,8 @@ let rec converse_stms (global_scope : name_set) (acc : ty statements_list) = fun
   | _ -> acc
 ;;
 
-(* let closure_converse stmts_list = [] *)
-
 let closure_converse stmts_list = converse_stms empty [] stmts_list
 
 let closure_test expr =
   Format.printf "%a\n%!" (Ast.pp_statements_list pp_type) (converse_stms empty [] expr)
 ;;
-
-(* let closure_test expr = Format.printf "%a\n%!" (Ast.pp_statements_list (fun _ _ -> ())) [] *)
-
-(*let%expect_test _ =
-  closure_test;
-  [%expect {| |}]
-;; *)

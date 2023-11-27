@@ -177,7 +177,7 @@ closure conversion определяет, что у переменной x в ф�
                'var0 -> int -> int)),
             (Apply (
                (Apply ((Variable ("g", 'var0 -> int -> int)),
-                  (Variable ("x", 'var0)), int -> int)),
+                  (Variable ("x", int)), int -> int)),
                (Variable ("x", int)), int)),
             int)),
          int -> int)),
@@ -213,7 +213,7 @@ closure conversion определяет, что у переменной x в ф�
                         (Variable ("__neinml_uni0g", int -> 'var0 -> int -> int
                            )),
                         (Variable ("g", int)), 'var0 -> int -> int)),
-                     (Variable ("x", 'var0)), int -> int)),
+                     (Variable ("x", int)), int -> int)),
                   (Variable ("x", int)), int)),
                int)),
             int)),
