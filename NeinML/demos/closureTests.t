@@ -79,11 +79,11 @@ fack n (fun x y -> x)
   [(Define ("fac",
       (Func ("n",
          (RecLetIn ("fack",
-            (Func ("n",
+            (Func ("__neinml_uni0n",
                (Func ("k",
                   (IfThenElse (
-                     (BinOp ((Variable ("n", 'var2)), (Value ((VInt 1), int)),
-                        LessOrEq, bool)),
+                     (BinOp ((Variable ("__neinml_uni0n", 'var2)),
+                        (Value ((VInt 1), int)), LessOrEq, bool)),
                      (Apply (
                         (Apply ((Variable ("k", 'var3)),
                            (Value ((VInt 1), int)), 'var5)),
@@ -92,30 +92,31 @@ fack n (fun x y -> x)
                         (Apply (
                            (Variable ("fack",
                               int -> (int -> int -> 'var14) -> 'var14)),
-                           (BinOp ((Variable ("n", 'var2)),
+                           (BinOp ((Variable ("__neinml_uni0n", 'var2)),
                               (Value ((VInt 1), int)), Sub, int)),
                            (int -> int -> 'var14) -> 'var14)),
                         (Apply (
                            (Apply (
-                              (Func ("k",
-                                 (Func ("n",
+                              (Func ("__neinml_uni0n",
+                                 (Func ("k",
                                     (Func ("m",
                                        (Func ("z",
                                           (Apply (
                                              (Apply ((Variable ("k", 'var3)),
                                                 (BinOp (
                                                    (Variable ("m", 'var9)),
-                                                   (Variable ("n", int)), Mul,
-                                                   int)),
+                                                   (Variable ("__neinml_uni0n",
+                                                      int)),
+                                                   Mul, int)),
                                                 'var12)),
                                              (Variable ("z", 'var10)), 'var13)),
                                           'var10 -> 'var13)),
                                        int -> 'var10 -> 'var13)),
-                                    int -> int -> 'var10 -> 'var13)),
-                                 'var3 -> int -> int -> 'var10 -> 'var13)),
-                              (Variable ("k", 'var3)),
-                              int -> int -> 'var10 -> 'var13)),
-                           (Variable ("n", int)), int -> 'var10 -> 'var13)),
+                                    'var3 -> int -> 'var10 -> 'var13)),
+                                 int -> 'var3 -> int -> 'var10 -> 'var13)),
+                              (Variable ("__neinml_uni0n", int)),
+                              'var3 -> int -> 'var10 -> 'var13)),
+                           (Variable ("k", 'var3)), int -> 'var10 -> 'var13)),
                         'var14)),
                      'var14)),
                   (int -> int -> 'var14) -> 'var14)),
@@ -132,17 +133,6 @@ fack n (fun x y -> x)
          int -> int)),
       int -> int))
     ]
-
-
-
-
-$ ./demoClosure.exe <<-EOF
-> let f x =
->   let g = 4 in
->   let g y = x + y + g in
->   g x
-> EOF
-kek
 
 
 тут ошибка в моей программе
@@ -189,6 +179,43 @@ closure conversion определяет, что у переменной x в ф�
                (Apply ((Variable ("g", 'var0 -> int -> int)),
                   (Variable ("x", 'var0)), int -> int)),
                (Variable ("x", int)), int)),
+            int)),
+         int -> int)),
+      int -> int))
+    ]
+
+
+тут тоже с типом x проблема
+
+  $ ./demoClosure.exe <<-EOF
+  > let f x =
+  >   let g = 4 in
+  >   let g y = x + y + g in
+  >   g x
+  > EOF
+  [(Define ("f",
+      (Func ("x",
+         (LetIn ("g", (Value ((VInt 4), int)),
+            (LetIn ("__neinml_uni0g",
+               (Func ("g",
+                  (Func ("x",
+                     (Func ("y",
+                        (BinOp ((Variable ("x", 'var0)),
+                           (BinOp ((Variable ("y", 'var1)),
+                              (Variable ("g", int)), Add, int)),
+                           Add, int)),
+                        int -> int)),
+                     'var0 -> int -> int)),
+                  int -> 'var0 -> int -> int)),
+               (Apply (
+                  (Apply (
+                     (Apply (
+                        (Variable ("__neinml_uni0g", int -> 'var0 -> int -> int
+                           )),
+                        (Variable ("g", int)), 'var0 -> int -> int)),
+                     (Variable ("x", 'var0)), int -> int)),
+                  (Variable ("x", int)), int)),
+               int)),
             int)),
          int -> int)),
       int -> int))
