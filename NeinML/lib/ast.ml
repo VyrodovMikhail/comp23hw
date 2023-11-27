@@ -32,7 +32,6 @@ type 'a expression =
   | LetIn of name * 'a expression * 'a expression * 'a
   | RecLetIn of name * 'a expression * 'a expression * 'a
   | IfThenElse of 'a expression * 'a expression * 'a expression * 'a
-  | Lambda of 'a expression * 'a
   | Func of name * 'a expression * 'a
   | Apply of 'a expression * 'a expression * 'a
   | Variable of name * 'a
@@ -45,10 +44,20 @@ type 'a statement =
 
 and 'a statements_list = 'a statement list [@@deriving show { with_path = false }]
 
+let get_meta = function
+  | BinOp (_, _, _, meta)
+  | LetIn (_, _, _, meta)
+  | RecLetIn (_, _, _, meta)
+  | IfThenElse (_, _, _, meta)
+  | Func (_, _, meta)
+  | Apply (_, _, meta)
+  | Variable (_, meta)
+  | Value (_, meta) -> meta
+;;
+
 let cval x meta = Value (x, meta)
 let cvar x meta = Variable (x, meta)
 let cbinop x y op meta = BinOp (x, y, op, meta)
-let clam x meta = Lambda (x, meta)
 let capply x y meta = Apply (x, y, meta)
 let cfunc x y meta = Func (x, y, meta)
 let cdef x y meta = Define (x, y, meta)

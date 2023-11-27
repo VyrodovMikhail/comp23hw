@@ -17,38 +17,45 @@ k m xx (5 + m)
       (Func ("c",
          (Func ("d",
             (LetIn ("m",
-               (BinOp ((Variable ("c", )), (Variable ("d", )), Add, )),
+               (BinOp ((Variable ("c", 'var0)), (Variable ("d", 'var1)), Add,
+                  int)),
                (LetIn ("xx",
                   (Func ("y",
-                     (BinOp ((Value ((VInt 1), )), (Variable ("y", )), Add, )), 
-                     )),
+                     (BinOp ((Value ((VInt 1), int)), (Variable ("y", 'var3)),
+                        Add, int)),
+                     int -> int)),
                   (LetIn ("k",
                      (Func ("m",
                         (Func ("xx",
                            (Func ("l",
-                              (BinOp ((Variable ("l", )),
-                                 (BinOp ((Variable ("m", )),
-                                    (Apply ((Variable ("xx", )),
-                                       (Variable ("l", )), )),
-                                    Add, )),
-                                 Add, )),
-                              )),
-                           )),
-                        )),
+                              (BinOp ((Variable ("l", 'var5)),
+                                 (BinOp ((Variable ("m", int)),
+                                    (Apply ((Variable ("xx", int -> int)),
+                                       (Variable ("l", 'var5)), int)),
+                                    Add, int)),
+                                 Add, int)),
+                              int -> int)),
+                           (int -> int) -> int -> int)),
+                        int -> (int -> int) -> int -> int)),
                      (Apply (
                         (Apply (
-                           (Apply ((Variable ("k", )), (Variable ("m", )), )),
-                           (Variable ("xx", )), )),
-                        (BinOp ((Value ((VInt 5), )), (Variable ("m", )), Add, 
-                           )),
-                        )),
-                     )),
-                  )),
-               )),
-            )),
-         )),
-      ))
+                           (Apply (
+                              (Variable ("k", int -> (int -> int) -> int -> int
+                                 )),
+                              (Variable ("m", int)), (int -> int) -> int -> int
+                              )),
+                           (Variable ("xx", int -> int)), int -> int)),
+                        (BinOp ((Value ((VInt 5), int)), (Variable ("m", int)),
+                           Add, int)),
+                        int)),
+                     int)),
+                  int)),
+               int)),
+            int -> int)),
+         int -> int -> int)),
+      int -> int -> int))
     ]
+
 
 
 
@@ -65,7 +72,7 @@ fack n (fun x y -> x)
   > let fac n =
   >   let rec fack n k =
   >   if n <= 1 then k 1 1
-  >   else fack (n - 1) (fun m z -> k (m * n))
+  >   else fack (n - 1) (fun m z -> k (m * n) z)
   >   in
   > fack n (fun x y -> x)
   > EOF
@@ -75,57 +82,78 @@ fack n (fun x y -> x)
             (Func ("n",
                (Func ("k",
                   (IfThenElse (
-                     (BinOp ((Variable ("n", )), (Value ((VInt 1), )),
-                        LessOrEq, )),
+                     (BinOp ((Variable ("n", 'var2)), (Value ((VInt 1), int)),
+                        LessOrEq, bool)),
                      (Apply (
-                        (Apply ((Variable ("k", )), (Value ((VInt 1), )), )),
-                        (Value ((VInt 1), )), )),
+                        (Apply ((Variable ("k", 'var3)),
+                           (Value ((VInt 1), int)), 'var5)),
+                        (Value ((VInt 1), int)), 'var6)),
                      (Apply (
-                        (Apply ((Variable ("fack", )),
-                           (BinOp ((Variable ("n", )), (Value ((VInt 1), )),
-                              Sub, )),
-                           )),
+                        (Apply (
+                           (Variable ("fack",
+                              int -> (int -> int -> 'var14) -> 'var14)),
+                           (BinOp ((Variable ("n", 'var2)),
+                              (Value ((VInt 1), int)), Sub, int)),
+                           (int -> int -> 'var14) -> 'var14)),
                         (Apply (
                            (Apply (
-                              (Lambda (
-                                 (Func ("k",
-                                    (Func ("n",
-                                       (Func ("m",
-                                          (Func ("z",
-                                             (Apply ((Variable ("k", )),
-                                                (BinOp ((Variable ("m", )),
-                                                   (Variable ("n", )), Mul, )),
-                                                )),
-                                             )),
-                                          )),
-                                       )),
-                                    )),
-                                 )),
-                              (Variable ("k", )), )),
-                           (Variable ("n", )), )),
-                        )),
-                     )),
-                  )),
-               )),
-            (Apply ((Apply ((Variable ("fack", )), (Variable ("n", )), )),
-               (Lambda ((Func ("x", (Func ("y", (Variable ("x", )), )), )), )), 
-               )),
-            )),
-         )),
-      ))
+                              (Func ("k",
+                                 (Func ("n",
+                                    (Func ("m",
+                                       (Func ("z",
+                                          (Apply (
+                                             (Apply ((Variable ("k", 'var3)),
+                                                (BinOp (
+                                                   (Variable ("m", 'var9)),
+                                                   (Variable ("n", int)), Mul,
+                                                   int)),
+                                                'var12)),
+                                             (Variable ("z", 'var10)), 'var13)),
+                                          'var10 -> 'var13)),
+                                       int -> 'var10 -> 'var13)),
+                                    int -> int -> 'var10 -> 'var13)),
+                                 'var3 -> int -> int -> 'var10 -> 'var13)),
+                              (Variable ("k", 'var3)),
+                              int -> int -> 'var10 -> 'var13)),
+                           (Variable ("n", int)), int -> 'var10 -> 'var13)),
+                        'var14)),
+                     'var14)),
+                  (int -> int -> 'var14) -> 'var14)),
+               int -> (int -> int -> 'var14) -> 'var14)),
+            (Apply (
+               (Apply (
+                  (Variable ("fack", int -> (int -> int -> 'var14) -> 'var14)),
+                  (Variable ("n", 'var0)), (int -> int -> 'var14) -> 'var14)),
+               (Func ("x",
+                  (Func ("y", (Variable ("x", 'var16)), 'var17 -> 'var16)),
+                  'var16 -> 'var17 -> 'var16)),
+               int)),
+            int)),
+         int -> int)),
+      int -> int))
     ]
 
 
 
-  $ ./demoClosure.exe <<-EOF
-  > let f x =
-  >   let g = 4 in
-  >   let g y = x + y + g in
-  >   g x
-  > EOF
-  kek
+
+$ ./demoClosure.exe <<-EOF
+> let f x =
+>   let g = 4 in
+>   let g y = x + y + g in
+>   g x
+> EOF
+kek
 
 
+тут ошибка в моей программе
+g должно иметь тип int -> int -> int, но
+closure conversion определяет, что у переменной x в функции g тип 'var0.
+Это потому что в изначальномм typed ast у неё и есть тип 'var0, но потом
+когда уже происходит apply, переменная x становится интом, а в моём алгоритме
+она сохраняет такой же тип в apply, который у функции в definition.
+Так что вот проблемка, пока не знаю, как решить...
+Можно тупо переделать это аст в unit ast и снова прогнать через тайпчекер, чтобы
+типы правильные были, но это как-то слишком тупо.
 
   $ ./demoClosure.exe <<-EOF
   > let f x =
@@ -135,4 +163,33 @@ fack n (fun x y -> x)
   >         x * y + g (y - 1)
   >   in g x
   > EOF
-  kek
+  [(Define ("f",
+      (Func ("x",
+         (RecLetIn ("g",
+            (Func ("x",
+               (Func ("y",
+                  (IfThenElse (
+                     (BinOp ((Variable ("y", 'var2)), (Value ((VInt 1), int)),
+                        LessOrEq, bool)),
+                     (Variable ("x", 'var0)),
+                     (BinOp (
+                        (BinOp ((Variable ("x", 'var0)),
+                           (Variable ("y", 'var2)), Mul, int)),
+                        (Apply (
+                           (Apply ((Variable ("g", 'var0 -> int -> int)),
+                              (Variable ("x", 'var0)), int -> int)),
+                           (BinOp ((Variable ("y", 'var2)),
+                              (Value ((VInt 1), int)), Sub, int)),
+                           int)),
+                        Add, int)),
+                     int)),
+                  int -> int)),
+               'var0 -> int -> int)),
+            (Apply (
+               (Apply ((Variable ("g", 'var0 -> int -> int)),
+                  (Variable ("x", 'var0)), int -> int)),
+               (Variable ("x", int)), int)),
+            int)),
+         int -> int)),
+      int -> int))
+    ]

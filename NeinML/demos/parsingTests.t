@@ -117,12 +117,10 @@
   > EOF
   [(Define ("var",
       (Func ("x",
-         (Lambda (
-            (Func ("y",
-               (Func ("z",
-                  (BinOp ((Variable ("x", )),
-                     (BinOp ((Variable ("y", )), (Variable ("z", )), Mul, )),
-                     Add, )),
+         (Func ("y",
+            (Func ("z",
+               (BinOp ((Variable ("x", )),
+                  (BinOp ((Variable ("y", )), (Variable ("z", )), Mul, )), Add, 
                   )),
                )),
             )),
@@ -142,6 +140,36 @@
             (Apply ((Variable ("func", )),
                (BinOp ((Variable ("x", )), (Variable ("x", )), Add, )), )),
             )),
+         )),
+      ))
+    ]
+
+  $ ./demoParse.exe <<-EOF
+  > let f x =
+  >   let rec g y =
+  >      if y <= 1 then x 
+  >      else
+  >         x * y + g (y - 1)
+  >   in g x
+  > EOF
+  [(Define ("f",
+      (Func ("x",
+         (RecLetIn ("g",
+            (Func ("y",
+               (IfThenElse (
+                  (BinOp ((Variable ("y", )), (Value ((VInt 1), )), LessOrEq, 
+                     )),
+                  (Variable ("x", )),
+                  (BinOp (
+                     (BinOp ((Variable ("x", )), (Variable ("y", )), Mul, )),
+                     (Apply ((Variable ("g", )),
+                        (BinOp ((Variable ("y", )), (Value ((VInt 1), )), Sub, 
+                           )),
+                        )),
+                     Add, )),
+                  )),
+               )),
+            (Apply ((Variable ("g", )), (Variable ("x", )), )), )),
          )),
       ))
     ]

@@ -64,7 +64,6 @@ let integer = str_integer >>| int_of_string
 let cval x = return @@ Ast.Value (x, ())
 let cvar x = return (Ast.Variable (x, ()))
 let cbinop x y op = parse_operator op >>= fun op -> return @@ Ast.BinOp (x, y, op, ())
-let clam x = return @@ Ast.Lambda (x, ())
 let capply x y = return @@ Ast.Apply (x, y, ())
 let cfunc x y = return @@ Ast.Func (x, y, ())
 let cdef x y = return (Ast.Define (x, y, ()))
@@ -188,8 +187,7 @@ let parse_miniml =
       *> (pack.all_ops pack inp_end
          <|> parse_bracket_inner_def
          <|> pack.parse_letin pack inp_end)
-      >>= ListM.fold_right cfunc args
-      >>= fun lam_expr -> clam lam_expr)
+      >>= ListM.fold_right cfunc args)
   in
   let parse_var = spaces *> varname <* spaces >>= cvar in
   let parse_part_singles = choice (parse_const @ [ parse_var ]) in

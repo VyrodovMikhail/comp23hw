@@ -32,7 +32,6 @@ type 'a expression =
   | RecLetIn of name * 'a expression * 'a expression * 'a (** let rec func = ... in ... *)
   | IfThenElse of 'a expression * 'a expression * 'a expression * 'a
       (** if condition then expr1 else expr2 *)
-  | Lambda of 'a expression * 'a (** fun args -> body *)
   | Func of name * 'a expression * 'a
       (** ast expression for defining functions with currying *)
   | Apply of 'a expression * 'a expression * 'a (** func arg1 arg2 ... *)
@@ -47,10 +46,10 @@ type 'a statement =
 
 and 'a statements_list = 'a statement list [@@deriving show { with_path = false }]
 
+val get_meta : 'a expression -> 'a
 val cval : const -> 'a -> 'a expression
 val cvar : name -> 'a -> 'a expression
 val cbinop : 'a expression -> 'a expression -> binop -> 'a -> 'a expression
-val clam : 'a expression -> 'a -> 'a expression
 val capply : 'a expression -> 'a expression -> 'a -> 'a expression
 val cfunc : name -> 'a expression -> 'a -> 'a expression
 val cdef : name -> 'a expression -> 'a -> 'a statement

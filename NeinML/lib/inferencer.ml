@@ -355,9 +355,6 @@ let infer_stmt =
       let typ = Subst.apply final_subst t3 in
       let new_ast = Ast.RecLetIn (name, typed_inner, typed_outer, typ) in
       return (final_subst, typ, new_ast)
-    | Ast.Lambda (body, ()) ->
-      let* subst_body, typ_body, typed_body = helper env body in
-      return (subst_body, typ_body, typed_body)
     | Ast.Func (param_name, def, ()) ->
       let* tv = fresh_var in
       let env = TypeEnv.extend env (param_name, S (VarSet.empty, tv)) in
@@ -385,17 +382,23 @@ let infer_stmt =
   statement_helper
 ;;
 
-let infer_statements (stms : unit Ast.statements_list) : ty list t =
-  let infer_list_elem env_stmt_pair = function
+let infer_statements (stms : unit Ast.statements_list)
+  : (ty list * ty Ast.statements_list) t
+  =
+  let infer_list_elem env_stmt_ast_pair = function
     | (Ast.Define (name, _, ()) | Ast.RecDefine (name, _, ())) as new_stmt ->
-      let* env, stms_types = env_stmt_pair in
-      let* _, ty, _ = infer_stmt env new_stmt in
-      return (TypeEnv.extend env (name, S (VarSet.empty, ty)), stms_types @ [ ty ])
+      let* env, stms_types, ast_list = env_stmt_ast_pair in
+      let* _, ty, typed_stmt = infer_stmt env new_stmt in
+      return
+        ( TypeEnv.extend env (name, S (VarSet.empty, ty))
+        , stms_types @ [ ty ]
+        , typed_stmt :: ast_list )
   in
   let* unpacked_res =
-    List.fold ~init:(return (TypeEnv.empty, [])) ~f:infer_list_elem stms
+    List.fold ~init:(return (TypeEnv.empty, [], [])) ~f:infer_list_elem stms
   in
-  return (snd unpacked_res)
+  let _, second, third = unpacked_res in
+  return (second, third)
 ;;
 
 let w_stms_list e = Result.map (run (infer_statements e)) ~f:Stdlib.Fun.id
@@ -403,7 +406,7 @@ let w_stms_list e = Result.map (run (infer_statements e)) ~f:Stdlib.Fun.id
 let run_stms_list stms_list =
   match w_stms_list stms_list with
   | Result.Error err -> print_typ_error err
-  | Ok subst -> List.iter subst ~f:print_typ
+  | Ok subst -> List.iter (fst subst) ~f:print_typ
 ;;
 
 let parse_and_infer text =
