@@ -54,23 +54,23 @@ end = struct
   type 'a t = int -> int * ('a, error) Result.t
 
   let ( >>= ) : 'a 'b. 'a t -> ('a -> 'b t) -> 'b t =
-    fun m f st ->
+   fun m f st ->
     let last, r = m st in
     match r with
     | Result.Error x -> last, Error x
     | Ok a -> f a last
-  ;;
+ ;;
 
   let fail e st = st, Result.fail e
   let return x last = last, Result.return x
   let bind x ~f = x >>= f
 
   let ( >>| ) : 'a 'b. 'a t -> ('a -> 'b) -> 'b t =
-    fun x f st ->
+   fun x f st ->
     match x st with
     | st, Ok x -> st, Ok (f x)
     | st, Result.Error e -> st, Result.Error e
-  ;;
+ ;;
 
   module Syntax = struct
     let ( let* ) x f = bind x ~f
@@ -245,7 +245,7 @@ let unify = Subst.unify
 let fresh_var = fresh >>| fun n -> Ty_var n
 
 let instantiate : scheme -> ty R.t =
-  fun (S (bs, t)) ->
+ fun (S (bs, t)) ->
   VarSet.fold_left_m
     (fun typ name ->
       let* f1 = fresh_var in
@@ -256,7 +256,7 @@ let instantiate : scheme -> ty R.t =
 ;;
 
 let generalize : TypeEnv.t -> Type.t -> Scheme.t =
-  fun env ty ->
+ fun env ty ->
   let free = VarSet.diff (Type.free_vars ty) (TypeEnv.free_vars env) in
   S (free, ty)
 ;;
@@ -289,7 +289,7 @@ let infer_stmt =
   let rec (helper
             : TypeEnv.t -> unit Ast.expression -> (Subst.t * ty * ty Ast.expression) R.t)
     =
-    fun env -> function
+   fun env -> function
     | Ast.Value (value, ()) ->
       let typ = infer_value value in
       return (Subst.empty, typ, Ast.Value (value, typ))
@@ -365,7 +365,7 @@ let infer_stmt =
   and statement_helper
     : TypeEnv.t -> unit Ast.statement -> (Subst.t * ty * ty Ast.statement) R.t
     =
-    fun env -> function
+   fun env -> function
     | Ast.Define (name, function_body, ()) ->
       let* subst, typ, typed_body = helper env function_body in
       return (subst, typ, Ast.Define (name, typed_body, typ))
