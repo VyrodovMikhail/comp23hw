@@ -54,23 +54,23 @@ end = struct
   type 'a t = int -> int * ('a, error) Result.t
 
   let ( >>= ) : 'a 'b. 'a t -> ('a -> 'b t) -> 'b t =
-   fun m f st ->
+    fun m f st ->
     let last, r = m st in
     match r with
     | Result.Error x -> last, Error x
     | Ok a -> f a last
- ;;
+  ;;
 
   let fail e st = st, Result.fail e
   let return x last = last, Result.return x
   let bind x ~f = x >>= f
 
   let ( >>| ) : 'a 'b. 'a t -> ('a -> 'b) -> 'b t =
-   fun x f st ->
+    fun x f st ->
     match x st with
     | st, Ok x -> st, Ok (f x)
     | st, Result.Error e -> st, Result.Error e
- ;;
+  ;;
 
   module Syntax = struct
     let ( let* ) x f = bind x ~f
@@ -245,7 +245,7 @@ let unify = Subst.unify
 let fresh_var = fresh >>| fun n -> Ty_var n
 
 let instantiate : scheme -> ty R.t =
- fun (S (bs, t)) ->
+  fun (S (bs, t)) ->
   VarSet.fold_left_m
     (fun typ name ->
       let* f1 = fresh_var in
@@ -256,7 +256,7 @@ let instantiate : scheme -> ty R.t =
 ;;
 
 let generalize : TypeEnv.t -> Type.t -> Scheme.t =
- fun env ty ->
+  fun env ty ->
   let free = VarSet.diff (Type.free_vars ty) (TypeEnv.free_vars env) in
   S (free, ty)
 ;;
@@ -289,7 +289,7 @@ let infer_stmt =
   let rec (helper
             : TypeEnv.t -> unit Ast.expression -> (Subst.t * ty * ty Ast.expression) R.t)
     =
-   fun env -> function
+    fun env -> function
     | Ast.Value (value, ()) ->
       let typ = infer_value value in
       return (Subst.empty, typ, Ast.Value (value, typ))
@@ -365,7 +365,7 @@ let infer_stmt =
   and statement_helper
     : TypeEnv.t -> unit Ast.statement -> (Subst.t * ty * ty Ast.statement) R.t
     =
-   fun env -> function
+    fun env -> function
     | Ast.Define (name, function_body, ()) ->
       let* subst, typ, typed_body = helper env function_body in
       return (subst, typ, Ast.Define (name, typed_body, typ))
@@ -382,26 +382,49 @@ let infer_stmt =
   statement_helper
 ;;
 
+let rec update_types subst stmt =
+  let rec expr_helper = function
+    | Ast.BinOp (op1, op2, op, t) ->
+      Ast.BinOp (expr_helper op1, expr_helper op2, op, Subst.apply subst t)
+    | Ast.LetIn (name, decl, expr, t) ->
+      Ast.LetIn (name, expr_helper decl, expr_helper expr, Subst.apply subst t)
+    | Ast.RecLetIn (name, decl, expr, t) ->
+      Ast.RecLetIn (name, expr_helper decl, expr_helper expr, Subst.apply subst t)
+    | Ast.IfThenElse (cond, thn, els, t) ->
+      Ast.IfThenElse
+        (expr_helper cond, expr_helper thn, expr_helper els, Subst.apply subst t)
+    | Ast.Func (name, body, t) -> Ast.Func (name, expr_helper body, Subst.apply subst t)
+    | Ast.Apply (f, arg, t) ->
+      Ast.Apply (expr_helper f, expr_helper arg, Subst.apply subst t)
+    | Ast.Variable (name, t) -> Ast.Variable (name, Subst.apply subst t)
+    | Ast.Value (value, t) -> Ast.Value (value, Subst.apply subst t)
+  in
+  match stmt with
+  | Ast.Define (name, expr, t) -> Ast.Define (name, expr_helper expr, Subst.apply subst t)
+  | Ast.RecDefine (name, expr, t) ->
+    Ast.RecDefine (name, expr_helper expr, Subst.apply subst t)
+;;
+
 let infer_statements (stms : unit Ast.statements_list)
   : (ty list * ty Ast.statements_list) t
   =
   let infer_list_elem env_stmt_ast_pair = function
     | (Ast.Define (name, _, ()) | Ast.RecDefine (name, _, ())) as new_stmt ->
       let* env, stms_types, ast_list = env_stmt_ast_pair in
-      let* _, ty, typed_stmt = infer_stmt env new_stmt in
-      return
-        ( TypeEnv.extend env (name, S (VarSet.empty, ty))
-        , stms_types @ [ ty ]
-        , typed_stmt :: ast_list )
+      let* subst, ty, typed_stmt = infer_stmt env new_stmt in
+      let typed_stmt = update_types subst typed_stmt in
+      let scheme = generalize env ty in
+      let env = TypeEnv.extend env (name, scheme) in
+      return (env, ty :: stms_types, typed_stmt :: ast_list)
   in
   let* unpacked_res =
     List.fold ~init:(return (TypeEnv.empty, [], [])) ~f:infer_list_elem stms
   in
   let _, second, third = unpacked_res in
-  return (second, third)
+  return (List.rev second, List.rev third)
 ;;
 
-let w_stms_list e = Result.map (run (infer_statements e)) ~f:Stdlib.Fun.id
+let w_stms_list e = run (infer_statements e)
 
 let run_stms_list stms_list =
   match w_stms_list stms_list with

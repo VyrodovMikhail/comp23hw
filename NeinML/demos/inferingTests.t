@@ -118,7 +118,7 @@
   > let test x = id x
   > EOF
   'var0 -> 'var0
-  'var2 -> 'var2
+  'var3 -> 'var3
 
   $ ./demoInfer.exe <<-EOF
   > let condition x = if x % 2 = 0 then true else false
