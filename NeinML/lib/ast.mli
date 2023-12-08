@@ -25,6 +25,7 @@ type binop =
   | LessOrEq (** a <= b *)
   | More (** a > b *)
   | MoreOrEq (** a >= b *)
+[@@deriving show { with_path = false }]
 
 type 'a expression =
   | BinOp of 'a expression * 'a expression * binop * 'a (** x * y *)
