@@ -205,3 +205,162 @@ fack n (fun x y -> x)
          int -> int)),
       int -> int))
     ]
+
+получается
+let func1 x y z = x + y + z
+let func2 __neinml_apply0 __neinml_apply1 = func1 4 __neinml_apply0 __neinml_apply1
+let func3 __neinml_apply0 = func2 5 __neinml_apply0
+
+  $ ./demoClosure.exe <<-EOF
+  > let func1 x y z = x + y + z
+  > let func2 = func1 4
+  > let func3 = func2 5
+  > EOF
+  [(Define ("func1",
+      (Func ("x",
+         (Func ("y",
+            (Func ("z",
+               (BinOp ((Variable ("x", int)),
+                  (BinOp ((Variable ("y", int)), (Variable ("z", int)), Add,
+                     int)),
+                  Add, int)),
+               int -> int)),
+            int -> int -> int)),
+         int -> int -> int -> int)),
+      int -> int -> int -> int));
+    (Define ("func2",
+       (Func ("__neinml_apply_0",
+          (Func ("__neinml_apply_1",
+             (Apply (
+                (Apply (
+                   (Apply ((Variable ("func1", int -> int -> int -> int)),
+                      (Value ((VInt 4), int)), int -> int -> int)),
+                   (Variable ("__neinml_apply_0", int)), int -> int)),
+                (Variable ("__neinml_apply_1", int)), int)),
+             int -> int)),
+          int -> int -> int)),
+       int -> int -> int));
+    (Define ("func3",
+       (Func ("__neinml_apply_0",
+          (Apply (
+             (Apply ((Variable ("func2", int -> int -> int)),
+                (Value ((VInt 5), int)), int -> int)),
+             (Variable ("__neinml_apply_0", int)), int)),
+          int -> int)),
+       int -> int))
+    ]
+
+получается
+let gg x = 
+let func1 __neinml_uni0x y z = __neinml_uni0x + y + z in
+let func2 func1 __neinml_apply0 __neinml_apply1 = func1 4 __neinml_apply0 __neinml_apply1
+func2 func1 5 x
+
+
+  $ ./demoClosure.exe <<-EOF
+  > let gg x =
+  > let func1 x y z = x + y + z in
+  > let func2 = func1 4 in
+  > func2 5 x
+  > EOF
+  [(Define ("gg",
+      (Func ("x",
+         (LetIn ("func1",
+            (Func ("__neinml_uni0x",
+               (Func ("y",
+                  (Func ("z",
+                     (BinOp ((Variable ("__neinml_uni0x", int)),
+                        (BinOp ((Variable ("y", int)), (Variable ("z", int)),
+                           Add, int)),
+                        Add, int)),
+                     int -> int)),
+                  int -> int -> int)),
+               int -> int -> int -> int)),
+            (LetIn ("func2",
+               (Func ("func1",
+                  (Func ("__neinml_apply_0",
+                     (Func ("__neinml_apply_1",
+                        (Apply (
+                           (Apply (
+                              (Apply (
+                                 (Variable ("func1", int -> int -> int -> int)),
+                                 (Value ((VInt 4), int)), int -> int -> int)),
+                              (Variable ("__neinml_apply_0", int)), int -> int
+                              )),
+                           (Variable ("__neinml_apply_1", int)), int)),
+                        int -> int)),
+                     int -> int -> int)),
+                  (int -> int -> int -> int) -> int -> int -> int)),
+               (Apply (
+                  (Apply (
+                     (Apply (
+                        (Variable ("func2",
+                           (int -> int -> int -> int) -> int -> int -> int)),
+                        (Variable ("func1", int -> int -> int -> int)),
+                        int -> int -> int)),
+                     (Value ((VInt 5), int)), int -> int)),
+                  (Variable ("x", int)), int)),
+               int)),
+            int)),
+         int -> int)),
+      int -> int))
+    ]
+
+let func1 x y z = x + y + z
+let func2 x y z = x - y - z
+let func3 __neinml_apply0 __neinml_apply1 = 
+if 1 > 2 then func1 5 __neinml_apply0 __neinml_apply1 
+else func2 6 __neinml_apply0 __neinml_apply1
+
+  $ ./demoClosure.exe <<-EOF
+  > let func1 x y z = x + y + z
+  > let func2 x y z = x - y - z
+  > let func3 = if 1 > 2 then func1 5 else func2 6
+  > EOF
+  [(Define ("func1",
+      (Func ("x",
+         (Func ("y",
+            (Func ("z",
+               (BinOp ((Variable ("x", int)),
+                  (BinOp ((Variable ("y", int)), (Variable ("z", int)), Add,
+                     int)),
+                  Add, int)),
+               int -> int)),
+            int -> int -> int)),
+         int -> int -> int -> int)),
+      int -> int -> int -> int));
+    (Define ("func2",
+       (Func ("__neinml_uni0x",
+          (Func ("__neinml_uni1y",
+             (Func ("__neinml_uni2z",
+                (BinOp ((Variable ("__neinml_uni0x", int)),
+                   (BinOp ((Variable ("__neinml_uni1y", int)),
+                      (Variable ("__neinml_uni2z", int)), Sub, int)),
+                   Sub, int)),
+                int -> int)),
+             int -> int -> int)),
+          int -> int -> int -> int)),
+       int -> int -> int -> int));
+    (Define ("func3",
+       (Func ("__neinml_apply_0",
+          (Func ("__neinml_apply_1",
+             (IfThenElse (
+                (BinOp ((Value ((VInt 1), int)), (Value ((VInt 2), int)), More,
+                   bool)),
+                (Apply (
+                   (Apply (
+                      (Apply ((Variable ("func1", int -> int -> int -> int)),
+                         (Value ((VInt 5), int)), int -> int -> int)),
+                      (Variable ("__neinml_apply_0", int)), int -> int)),
+                   (Variable ("__neinml_apply_1", int)), int)),
+                (Apply (
+                   (Apply (
+                      (Apply ((Variable ("func2", int -> int -> int -> int)),
+                         (Value ((VInt 6), int)), int -> int -> int)),
+                      (Variable ("__neinml_apply_0", int)), int -> int)),
+                   (Variable ("__neinml_apply_1", int)), int)),
+                int)),
+             int -> int)),
+          int -> int -> int)),
+       int -> int -> int))
+    ]

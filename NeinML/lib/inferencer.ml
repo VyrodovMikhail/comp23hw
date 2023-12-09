@@ -382,7 +382,7 @@ let infer_stmt =
   statement_helper
 ;;
 
-let rec update_types subst stmt =
+let update_types subst stmt =
   let rec expr_helper = function
     | Ast.BinOp (op1, op2, op, t) ->
       Ast.BinOp (expr_helper op1, expr_helper op2, op, Subst.apply subst t)

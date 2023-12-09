@@ -131,6 +131,15 @@ let get_args_body (func : ty Ast.expression) =
   args, body
 ;;
 
+let get_args_func (func : ty Ast.expression) =
+  let rec func_helper acc = function
+    | Apply (inner_func, arg, _) -> func_helper ((arg, get_meta arg) :: acc) inner_func
+    | _ as func_var -> acc, func_var
+  in
+  let args, func_var = func_helper [] func in
+  args, func_var
+;;
+
 let remove_keys map keys =
   Base.Map.fold map ~init:map ~f:(fun ~key ~data fold_map ->
     match Base.Set.mem keys key with
@@ -194,7 +203,182 @@ let delete_arrow = function
 
 type ancestor_type =
   | Func
-  | NotFunctype
+  | Apply
+  | NotFuncAndApply
+
+module ApplyIntState = struct
+  include Monad.State (struct
+    type t = int * name_set
+  end)
+
+  let ( let* ) = ( >>= )
+
+  let incrementCounter =
+    let* counter, scope = get in
+    let* () = put (counter + 1, scope) in
+    return counter
+  ;;
+
+  let fresh =
+    let* num = incrementCounter in
+    return @@ String.concat "" [ "__neinml_apply_"; string_of_int num ]
+  ;;
+
+  let get_scope =
+    let* _, scope = get in
+    return scope
+  ;;
+
+  let put_scope scope =
+    let* counter, _ = get in
+    put (counter, scope)
+  ;;
+end
+
+let rec remove_partial_applications new_args_map global_scope ancestor expr =
+  match expr with
+  | LetIn (name, definition, body, _) | RecLetIn (name, definition, body, _) ->
+    let processed_definition, new_args =
+      remove_partial_applications new_args_map global_scope NotFuncAndApply definition
+    in
+    let def_conversion_with_new_args =
+      Base.List.fold
+        (Base.List.rev (Base.Map.keys new_args))
+        ~init:processed_definition
+        ~f:(fun acc arg ->
+          cfunc arg acc (Arrow (Base.Map.find_exn new_args arg, get_meta acc)))
+    in
+    let new_map =
+      Base.Map.set
+        new_args_map
+        ~key:name
+        ~data:(new_args, get_meta def_conversion_with_new_args)
+    in
+    let processed_body, new_body_args =
+      remove_partial_applications new_map global_scope NotFuncAndApply body
+    in
+    let body_type = get_meta processed_body in
+    let constructor = get_letin_constructor expr in
+    constructor name def_conversion_with_new_args processed_body body_type, new_body_args
+  | Variable (name, typ) ->
+    let new_var = cvar name typ in
+    new_var, empty_map
+  | BinOp (expr1, expr2, op, _) as binop ->
+    let conversed_left, left_new_args =
+      remove_partial_applications new_args_map global_scope NotFuncAndApply expr1
+    in
+    let conversed_right, right_new_args =
+      remove_partial_applications new_args_map global_scope NotFuncAndApply expr2
+    in
+    let new_map =
+      Base.Map.merge_skewed left_new_args right_new_args ~combine:(fun ~key v1 _ -> v1)
+    in
+    cbinop conversed_left conversed_right op (get_meta binop), new_map
+  | Apply (inner_func, last_arg, apply_typ) ->
+    (match ancestor with
+     | NotFuncAndApply | Func ->
+       let open ApplyIntState in
+       let conversed_func, new_func_args =
+         remove_partial_applications new_args_map global_scope Apply inner_func
+       in
+       let conversed_arg, new_arg_args =
+         remove_partial_applications new_args_map global_scope Apply last_arg
+       in
+       let new_typ =
+         match delete_arrow (get_meta conversed_func) with
+         | Ty_var _ -> apply_typ
+         | normal_typ -> normal_typ
+       in
+       let new_apply = capply conversed_func conversed_arg new_typ in
+       let rec fill_new_applies acc_expr acc_map = function
+         | Arrow (arg_typ, func_typ) ->
+           let* new_varname = fresh in
+           let new_var = cvar new_varname arg_typ in
+           fill_new_applies
+             (capply acc_expr new_var func_typ)
+             (Base.Map.set acc_map ~key:new_varname ~data:arg_typ)
+             func_typ
+         | _ -> return @@ (acc_expr, acc_map)
+       in
+       let new_apply_expr, new_vars =
+         fill_new_applies new_apply empty_map new_typ |> eval (0, empty)
+       in
+       let new_vars =
+         Base.Map.merge_skewed new_vars new_func_args ~combine:(fun ~key v1 _ -> v1)
+       in
+       let new_vars =
+         Base.Map.merge_skewed new_vars new_arg_args ~combine:(fun ~key v1 _ -> v1)
+       in
+       new_apply_expr, new_vars
+     | Apply ->
+       let conversed_func =
+         remove_partial_applications new_args_map global_scope Apply inner_func
+       in
+       let conversed_arg =
+         remove_partial_applications new_args_map global_scope NotFuncAndApply last_arg
+       in
+       let new_typ =
+         match delete_arrow (get_meta (fst conversed_func)) with
+         | Ty_var _ -> apply_typ
+         | normal_typ -> normal_typ
+       in
+       let new_map =
+         Base.Map.merge_skewed
+           (snd conversed_func)
+           (snd conversed_arg)
+           ~combine:(fun ~key v1 _ -> v1)
+       in
+       capply (fst conversed_func) (fst conversed_arg) new_typ, new_map)
+  | Value _ as value -> value, empty_map
+  | IfThenElse (cond, expr1, expr2, _) ->
+    let conversed_cond, cond_new_args =
+      remove_partial_applications new_args_map global_scope NotFuncAndApply cond
+    in
+    let conversed_expr1, expr1_new_args =
+      remove_partial_applications new_args_map global_scope NotFuncAndApply expr1
+    in
+    let conversed_expr2, expr2_new_args =
+      remove_partial_applications new_args_map global_scope NotFuncAndApply expr2
+    in
+    let new_map =
+      Base.Map.merge_skewed cond_new_args expr1_new_args ~combine:(fun ~key v1 _ -> v1)
+    in
+    let new_map =
+      Base.Map.merge_skewed new_map expr2_new_args ~combine:(fun ~key v1 _ -> v1)
+    in
+    ( cifthenelse conversed_cond conversed_expr1 conversed_expr2 (get_meta conversed_expr1)
+    , new_map )
+  | Func (arg_name, inner_func, func_typ) ->
+    let conversed_inner_func, new_func_args =
+      remove_partial_applications new_args_map global_scope Func inner_func
+    in
+    let arg_typ = get_arg_typ func_typ in
+    ( cfunc arg_name conversed_inner_func (Arrow (arg_typ, get_meta conversed_inner_func))
+    , new_func_args )
+;;
+
+let rec remove_part_apps_in_stms global_scope (acc : ty statements_list) = function
+  | stmt :: tail ->
+    (match stmt with
+     | Define (name, body, _) | RecDefine (name, body, _) ->
+       let processed_body, new_body_args =
+         remove_partial_applications empty_map global_scope NotFuncAndApply body
+       in
+       let new_scope =
+         Base.Map.set global_scope ~key:name ~data:(new_body_args, get_meta processed_body)
+       in
+       let body_with_new_args =
+         Base.List.fold
+           (Base.List.rev (Base.Map.keys new_body_args))
+           ~init:processed_body
+           ~f:(fun acc arg ->
+             cfunc arg acc (Arrow (Base.Map.find_exn new_body_args arg, get_meta acc)))
+       in
+       let constructor = get_define_constructor stmt in
+       let new_stmt = constructor name body_with_new_args (get_meta body_with_new_args) in
+       remove_part_apps_in_stms new_scope (new_stmt :: acc) tail)
+  | _ -> List.rev acc
+;;
 
 let rec closure_conversion
   (free_vars_map : free_vars_map_type)
@@ -208,7 +392,9 @@ let rec closure_conversion
     (match get_meta definition with
      | Prim _ as let_typ ->
        let new_map = Base.Map.set free_vars_map ~key:name ~data:(empty_map, let_typ) in
-       let body_conversion = closure_conversion new_map global_scope NotFunctype body in
+       let body_conversion =
+         closure_conversion new_map global_scope NotFuncAndApply body
+       in
        let body_type = get_meta body_conversion in
        let constructor = get_letin_constructor expr in
        constructor name definition body_conversion body_type
@@ -228,7 +414,7 @@ let rec closure_conversion
          Base.Map.set free_vars_map ~key:name ~data:(free_vars, new_func_type)
        in
        let def_conversion =
-         closure_conversion new_map global_scope NotFunctype def_body
+         closure_conversion new_map global_scope NotFuncAndApply def_body
        in
        let def_conversion_with_args =
          Base.List.fold args ~init:def_conversion ~f:(fun acc arg ->
@@ -246,7 +432,9 @@ let rec closure_conversion
          Base.Map.update new_map name ~f:(fun _ ->
            free_vars, get_meta def_conversion_with_free_vars)
        in
-       let body_conversion = closure_conversion new_map global_scope NotFunctype body in
+       let body_conversion =
+         closure_conversion new_map global_scope NotFuncAndApply body
+       in
        let body_type = get_meta body_conversion in
        let constructor = get_letin_constructor expr in
        constructor name def_conversion_with_free_vars body_conversion body_type)
@@ -264,18 +452,16 @@ let rec closure_conversion
      | None -> Variable (name, typ))
   | BinOp (expr1, expr2, op, _) as binop ->
     let conversed_left =
-      closure_conversion free_vars_map global_scope NotFunctype expr1
+      closure_conversion free_vars_map global_scope NotFuncAndApply expr1
     in
     let conversed_right =
-      closure_conversion free_vars_map global_scope NotFunctype expr2
+      closure_conversion free_vars_map global_scope NotFuncAndApply expr2
     in
     cbinop conversed_left conversed_right op (get_meta binop)
   | Apply (inner_func, last_arg, apply_typ) ->
-    let conversed_func =
-      closure_conversion free_vars_map global_scope NotFunctype inner_func
-    in
+    let conversed_func = closure_conversion free_vars_map global_scope Apply inner_func in
     let conversed_arg =
-      closure_conversion free_vars_map global_scope NotFunctype last_arg
+      closure_conversion free_vars_map global_scope NotFuncAndApply last_arg
     in
     let new_typ =
       match delete_arrow (get_meta conversed_func) with
@@ -285,17 +471,19 @@ let rec closure_conversion
     capply conversed_func conversed_arg new_typ
   | Value _ as value -> value
   | IfThenElse (cond, expr1, expr2, _) as if_stmt ->
-    let conversed_cond = closure_conversion free_vars_map global_scope NotFunctype cond in
+    let conversed_cond =
+      closure_conversion free_vars_map global_scope NotFuncAndApply cond
+    in
     let conversed_expr1 =
-      closure_conversion free_vars_map global_scope NotFunctype expr1
+      closure_conversion free_vars_map global_scope NotFuncAndApply expr1
     in
     let conversed_expr2 =
-      closure_conversion free_vars_map global_scope NotFunctype expr2
+      closure_conversion free_vars_map global_scope NotFuncAndApply expr2
     in
     cifthenelse conversed_cond conversed_expr1 conversed_expr2 (get_meta if_stmt)
   | Func (arg_name, inner_func, func_typ) as new_func ->
     (match ancestor with
-     | NotFunctype ->
+     | NotFuncAndApply | Apply ->
        let conversed_func = closure_conversion free_vars_map global_scope Func new_func in
        let lambda_free_vars = get_unbound_vars empty_map conversed_func in
        let func_with_new_args =
@@ -325,7 +513,9 @@ let rec converse_stms (global_scope : name_set) (acc : ty statements_list) = fun
      | Define (name, body, _) | RecDefine (name, body, _) ->
        let args, def_body = get_args_body body in
        let new_scope = Base.Set.add global_scope name in
-       let conversed_body = closure_conversion empty_map new_scope NotFunctype def_body in
+       let conversed_body =
+         closure_conversion empty_map new_scope NotFuncAndApply def_body
+       in
        let conversed_func =
          Base.List.fold args ~init:conversed_body ~f:(fun acc arg ->
            let arg_name, arg_typ = arg in
@@ -334,9 +524,10 @@ let rec converse_stms (global_scope : name_set) (acc : ty statements_list) = fun
        let constructor = get_define_constructor stmt in
        let new_stmt = constructor name conversed_func (get_meta conversed_func) in
        converse_stms new_scope (new_stmt :: acc) tail)
-  | _ -> acc
+  | _ -> List.rev acc
 ;;
 
+let remove_part_apps stmts_list = remove_part_apps_in_stms empty_map [] stmts_list
 let closure_converse stmts_list = converse_stms empty [] stmts_list
 
 let closure_test expr =

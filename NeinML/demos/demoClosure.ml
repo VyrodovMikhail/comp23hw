@@ -12,10 +12,11 @@ let () =
      | Result.Ok result ->
        let _, typ_ast = result in
        let unique_names_ast = Neinml_lib.Closure.unique_names typ_ast in
+       let ast_without_part_apps = Neinml_lib.Closure.remove_part_apps unique_names_ast in
        Format.printf
          "%a\n%!"
          (Ast.pp_statements_list Neinml_lib.Typing.pp_type)
-         (Neinml_lib.Closure.closure_converse unique_names_ast)
+         (Neinml_lib.Closure.closure_converse ast_without_part_apps)
      | Result.Error _ -> Format.printf "inferencer error")
   | Error _ -> Format.printf "Parsing error"
 ;;
