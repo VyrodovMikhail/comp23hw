@@ -279,3 +279,34 @@
           )),
        ));
     (Define ("val", (Value ((VInt 15), )), ))]
+
+  $ ./demoParse.exe <<-EOF
+  > let f = (fun x ->
+  >  let g x = x in 
+  > (if x then g else (fun y -> y + 5)) 4)
+  > EOF
+  [(Define ("f",
+      (Func ("x",
+         (LetIn ("g", (Func ("x", (Variable ("x", )), )),
+            (Apply (
+               (IfThenElse ((Variable ("x", )), (Variable ("g", )),
+                  (Func ("y",
+                     (BinOp ((Variable ("y", )), (Value ((VInt 5), )), Add, )), 
+                     )),
+                  )),
+               (Value ((VInt 4), )), )),
+            )),
+         )),
+      ))
+    ]
+
+  $ ./demoParse.exe <<-EOF
+  > let f = (let g x = x in g) 42
+  > EOF
+  [(Define ("f",
+      (Apply (
+         (LetIn ("g", (Func ("x", (Variable ("x", )), )), (Variable ("g", )), 
+            )),
+         (Value ((VInt 42), )), )),
+      ))
+    ]

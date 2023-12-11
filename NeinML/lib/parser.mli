@@ -12,9 +12,12 @@ val parse : string -> (unit Ast.statements_list, error) result
 type dispatch =
   { func_call : dispatch -> unit Ast.expression Angstrom.t (** Parser for function call *)
   ; parse_lam : dispatch -> string -> unit Ast.expression Angstrom.t
+      (** Parser for anonymous functions (fun ... -> ...) *)
   ; parse_if : dispatch -> string -> unit Ast.expression Angstrom.t
   ; arithmetical : dispatch -> string -> unit Ast.expression Angstrom.t
       (** Parser for arithmetic operations *)
+  ; parse_priority : dispatch -> string -> unit Ast.expression Angstrom.t
+      (** Parser for only arithmetic operations *, /, % *)
   ; logical : dispatch -> string -> unit Ast.expression Angstrom.t
       (** Parser for logic operations without && and || operators *)
   ; parse_and : dispatch -> string -> unit Ast.expression Angstrom.t

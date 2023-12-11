@@ -108,6 +108,7 @@ type dispatch =
   ; parse_lam : dispatch -> string -> unit Ast.expression Angstrom.t
   ; parse_if : dispatch -> string -> unit Ast.expression Angstrom.t
   ; arithmetical : dispatch -> string -> unit Ast.expression Angstrom.t
+  ; parse_priority : dispatch -> string -> unit Ast.expression Angstrom.t
   ; logical : dispatch -> string -> unit Ast.expression Angstrom.t
   ; parse_and : dispatch -> string -> unit Ast.expression Angstrom.t
   ; logical_sequence : dispatch -> string -> unit Ast.expression Angstrom.t
@@ -158,8 +159,8 @@ let parse_miniml =
     *> choice
          [ pack.all_singles pack inp_end
          ; pack.arithmetical pack inp_end
-         ; pack.logical_sequence pack inp_end
          ; pack.parse_and pack inp_end
+         ; pack.logical_sequence pack inp_end
          ; pack.logical pack inp_end
          ]
     <* spaces
@@ -167,13 +168,15 @@ let parse_miniml =
   let func_call pack =
     fix (fun _ ->
       spaces *> (varname >>= fun x -> cvar x)
+      <|> (char '(' *> pack.parse_if pack ")" <* char ')')
       <|> (char '(' *> pack.parse_lam pack ")" <* char ')')
+      <|> (char '(' *> pack.parse_letin pack ")" <* char ')')
       >>= fun x_var ->
-      many (pack.bracket pack <|> parse_singles) >>= ListM.fold_left capply x_var)
+      many (parse_singles <|> pack.bracket pack) >>= ListM.fold_left capply x_var)
   in
   let parse_lam pack inp_end =
     let parse_bracket_inner_def =
-      spaces *> char '(' *> spaces *> pack.parse_letin pack ")"
+      spaces *> char '(' *> spaces *> (pack.all_ops pack ")" <|> pack.parse_letin pack ")")
       <* spaces
       <* char ')'
       <* spaces
@@ -184,9 +187,9 @@ let parse_miniml =
       >>= fun args ->
       string "->"
       *> spaces
-      *> (pack.all_ops pack inp_end
-         <|> parse_bracket_inner_def
-         <|> pack.parse_letin pack inp_end)
+      *> (parse_bracket_inner_def
+         <|> pack.parse_letin pack inp_end
+         <|> pack.all_ops pack inp_end)
       >>= ListM.fold_right cfunc args)
   in
   let parse_var = spaces *> varname <* spaces >>= cvar in
@@ -227,30 +230,51 @@ let parse_miniml =
     choice
       [ parse_singles <* input_end inp_end
       ; pack.parse_lam pack inp_end
-      ; pack.bracket pack <* input_end inp_end
       ; pack.func_call pack <* input_end inp_end
       ; pack.parse_if pack inp_end
+      ; pack.bracket pack <* input_end inp_end
       ]
   in
-  let all_singles pack end_input =
-    let parse_priority =
+  let bracket pack =
+    fix (fun _ ->
+      spaces
+      *> char '('
+      *> choice
+           [ parse_singles <* input_end ")"
+           ; pack.func_call pack <* input_end ")"
+           ; pack.parse_if pack ")"
+           ; pack.parse_lam pack ")"
+           ; pack.parse_priority pack ")"
+           ; pack.arithmetical pack ")"
+           ; pack.parse_and pack ")"
+           ; pack.logical_sequence pack ")"
+           ; pack.logical pack ")"
+           ]
+      <* char ')'
+      <* spaces)
+  in
+  let parse_priority pack inp_end =
+    fix (fun _ ->
       pack.bracket_singles pack "*"
       <|> pack.bracket_singles pack "/"
       <|> pack.bracket_singles pack "%"
       >>= fun left ->
       choice [ string "*"; string "/"; string "%" ]
       >>= fun operator ->
-      pack.bracket_singles pack end_input
-      <|> spaces *> pack.all_singles pack end_input
-      >>= fun right -> cbinop left right operator
-    in
-    spaces
-    *> (pack.bracket_singles pack end_input <|> parse_priority <* input_end end_input)
-    <* spaces
+      pack.bracket_singles pack inp_end
+      <|> pack.parse_priority pack inp_end
+      >>= fun right -> cbinop left right operator)
+  in
+  let all_singles pack end_input =
+    fix (fun _ ->
+      spaces
+      *> (pack.bracket_singles pack end_input
+         <|> (pack.parse_priority pack end_input <* input_end end_input))
+      <* spaces)
   in
   let arithmetical pack end_input =
     fix (fun _ ->
-      let parse_simple_op_without_brackets end_input op =
+      let parse_simple_op end_input op =
         pack.all_singles pack op
         <* string op
         >>= fun left ->
@@ -258,11 +282,8 @@ let parse_miniml =
         <* input_end end_input
         >>= fun right -> cbinop left right op
       in
-      let parse_simple_op end_input op =
-        parse_simple_op_without_brackets end_input op :: []
-      in
       let parse_simple_ops end_input =
-        parse_simple_op end_input "+" @ parse_simple_op end_input "-"
+        [ parse_simple_op end_input "+"; parse_simple_op end_input "-" ]
       in
       let parse_complex_op end_input operator =
         pack.all_singles pack operator
@@ -340,21 +361,6 @@ let parse_miniml =
       in
       parse_or inp_end "||")
   in
-  let bracket pack =
-    fix (fun _ ->
-      spaces
-      *> char '('
-      *> choice
-           [ pack.all_singles pack ")"
-           ; pack.arithmetical pack ")"
-           ; pack.logical pack ")"
-           ; pack.logical_sequence pack ")"
-           ; pack.parse_and pack ")"
-           ; parse_singles <* input_end ")"
-           ]
-      <* char ')'
-      <* spaces)
-  in
   let parse_rec =
     peek_string 3
     >>= fun x ->
@@ -409,6 +415,7 @@ let parse_miniml =
   ; parse_lam
   ; parse_if
   ; arithmetical
+  ; parse_priority
   ; logical
   ; parse_and
   ; logical_sequence
