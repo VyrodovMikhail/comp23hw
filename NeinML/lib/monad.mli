@@ -19,6 +19,7 @@ module type StateSig = functor
   val get : S.t t
   val put : S.t -> unit t
   val modify : (S.t -> S.t) -> unit t
+  val run : S.t -> 'a t -> 'a * S.t
   val eval : S.t -> 'a t -> 'a
 end
 
@@ -27,4 +28,5 @@ module State : StateSig
 module ListM (M : Monad) : sig
   val fold_left : ('state -> 'b -> 'state M.t) -> 'state -> 'b list -> 'state M.t
   val fold_right : ('b -> 'state -> 'state M.t) -> 'b list -> 'state -> 'state M.t
+  val map : ('a -> 'b M.t) -> 'a list -> 'b list M.t
 end

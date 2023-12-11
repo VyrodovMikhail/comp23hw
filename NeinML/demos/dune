@@ -22,5 +22,13 @@
  (public_name demoClosure)
  (libraries neinml_lib stdio))
 
+(executable
+ (name demoLambda)
+ (modules demoLambda)
+ (instrumentation
+  (backend bisect_ppx))
+ (public_name demoLambda)
+ (libraries neinml_lib stdio))
+
 (cram
- (deps ./demoParse.exe ./demoInfer.exe ./demoClosure.exe))
+ (deps ./demoParse.exe ./demoInfer.exe ./demoClosure.exe ./demoLambda.exe))
