@@ -5,9 +5,9 @@
 type expression =
   | BinOp of expression * expression * Ast.binop * Typing.ty (** x * y *)
   | IfThenElse of expression * expression * expression * Typing.ty
-  (** if condition then expr1 else expr2 *)
+      (** if condition then expr1 else expr2 *)
   | Apply of expression * expression * expression list * Typing.ty
-  (** func arg1 arg2 ... *)
+      (** func arg1 arg2 ... *)
   | Variable of Ast.name * Typing.ty (** var *)
   | Value of Ast.const * Typing.ty (** value (const) *)
 [@@deriving show { with_path = false }]
@@ -25,6 +25,14 @@ type 'expression statement =
 type 'expression statement_list = 'expression statement list
 [@@deriving show { with_path = false }]
 
+let get_meta = function
+  | BinOp (_, _, _, meta)
+  | IfThenElse (_, _, _, meta)
+  | Apply (_, _, _, meta)
+  | Variable (_, meta)
+  | Value (_, meta) -> meta
+;;
+
 let define name args var_decls ret_v typ = Define (name, args, var_decls, ret_v, typ)
 
 let rec_define name args var_decls ret_v typ =
@@ -33,8 +41,8 @@ let rec_define name args var_decls ret_v typ =
 
 module IntState = struct
   include Monad.State (struct
-      type t = int * expression statement list
-    end)
+    type t = int * expression statement list
+  end)
 
   let ( let* ) = ( >>= )
 

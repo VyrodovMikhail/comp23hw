@@ -1,4 +1,4 @@
-(* Expected that inner lets should be lefted except for variable declarations *)
+(* Expected that inner lets should be lifted except for variable declarations *)
   $ ./demoLambda.exe <<-EOF
   > let val =
   >   let var = 42 in
