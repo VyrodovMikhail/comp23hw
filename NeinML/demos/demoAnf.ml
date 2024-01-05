@@ -17,7 +17,7 @@ let () =
          (Lambda_lifting.pp_statement_list Anf.pp_cexpr)
          (Neinml_lib.Closure.closure_converse unique_names_ast
          |> Lambda_lifting.lift_lambda
-         |> Anf.anf)
+         |> Anf.make_anf)
      | Result.Error _ -> Format.printf "inferencer error")
   | Error _ -> Format.printf "Parsing error"
 ;;

@@ -9,7 +9,11 @@ type imm_expr =
 type cexpr =
   | CBinOp of imm_expr * imm_expr * Ast.binop * Typing.ty
   | CApply of imm_expr * imm_expr * imm_expr list * Typing.ty
-  | CIfThenElse of imm_expr * imm_expr * imm_expr * Typing.ty
+  | CIfThenElse of
+      imm_expr
+      * (cexpr Lambda_lifting.var_decl list * cexpr)
+      * (cexpr Lambda_lifting.var_decl list * cexpr)
+      * Typing.ty
   | CImm of imm_expr
 [@@deriving show { with_path = false }]
 
@@ -96,13 +100,21 @@ let rec expr_to_cexpr =
     let new_var = ImmVar (new_varname, if_typ) in
     let* new_cond_var, cond_var_decls = expr_to_cexpr cond in
     let* new_true_var, true_var_decls = expr_to_cexpr true_expr in
+    let true_var = CImm new_true_var in
     let* new_false_var, false_var_decls = expr_to_cexpr false_expr in
-    let new_expr = CIfThenElse (new_cond_var, new_true_var, new_false_var, if_typ) in
+    let false_var = CImm new_false_var in
+    let new_expr =
+      CIfThenElse
+        ( new_cond_var
+        , (List.rev true_var_decls, true_var)
+        , (List.rev false_var_decls, false_var)
+        , if_typ )
+    in
     let new_var_decl = new_varname, new_expr, if_typ in
-    return (new_var, (new_var_decl :: cond_var_decls) @ true_var_decls @ false_var_decls)
+    return (new_var, new_var_decl :: cond_var_decls)
 ;;
 
-let anf stmts =
+let make_anf stmts =
   let rec anf_helper acc =
     let open Lambda_lifting in
     function
